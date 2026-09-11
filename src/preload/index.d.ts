@@ -1,0 +1,22 @@
+import { ElectronAPI } from '@electron-toolkit/preload'
+import { Game } from '../shared/types'
+
+export interface API {
+  getGames: () => Promise<Game[]>
+  launchGame: (game: Game) => void
+  selectExeFile: () => Promise<Game | null>
+  selectImageFile: () => Promise<string | null>
+  scanSteamGames: () => Promise<Game[]>
+  scanEpicGames: () => Promise<Game[]>
+  saveGames: (games: Game[]) => Promise<{ saved: number }>
+  updateGame: (game: Game) => Promise<boolean>
+  deleteGame: (id: string) => Promise<boolean>
+  openGameFolder: (exePath: string) => Promise<void>
+}
+
+declare global {
+  interface Window {
+    electron: ElectronAPI
+    api: API
+  }
+}
