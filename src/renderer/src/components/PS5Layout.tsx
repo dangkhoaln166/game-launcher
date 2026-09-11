@@ -18,6 +18,7 @@ interface PS5LayoutProps {
   onGamesAdded?: (newGames: Game[]) => void
   onGameUpdated?: (game: Game) => void
   onGameDeleted?: (id: string) => void
+  onGamesReordered?: (games: Game[]) => void
 }
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
@@ -194,7 +195,7 @@ function GameCard({ game, isSelected, onSelect, onLaunch }: CardProps) {
 }
 
 // ─── Main layout ──────────────────────────────────────────────────────────────
-export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGamesAdded, onGameUpdated, onGameDeleted }: PS5LayoutProps) {
+export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGamesAdded, onGameUpdated, onGameDeleted, onGamesReordered }: PS5LayoutProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [time, setTime] = useState('')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -317,7 +318,7 @@ export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGame
         onClose={() => setIsSortGridOpen(false)}
         onSaveOrder={async (updatedGames) => {
           await window.api.saveGames(updatedGames)
-          onGamesAdded?.([]) // Trigger re-render in App
+          onGamesReordered?.(updatedGames)
           setSortMode('manual') // Auto switch to manual mode when order is saved
         }}
       />

@@ -41,15 +41,23 @@ function App() {
     setGames((prev) => prev.filter((g) => g.id !== id))
   }
 
+  const handleGamesReordered = (reorderedGames: Game[]) => {
+    setGames(reorderedGames)
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="w-screen h-screen bg-black overflow-hidden font-sans select-none text-white">
+
       <PS5Layout
         games={games}
         isLoading={isLoading}
         onPlay={handlePlayGame}
+        onSettings={() => alert('Chức năng cài đặt (Comming soon)')}
         onGamesAdded={handleGamesAdded}
         onGameUpdated={handleGameUpdated}
         onGameDeleted={handleGameDeleted}
+        onGamesReordered={handleGamesReordered}
       />
     </div>
   )
