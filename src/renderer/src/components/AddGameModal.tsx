@@ -215,12 +215,37 @@ export default function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameMo
                         placeholder="Nhập tên game…"
                         autoFocus
                       />
-                      <button
-                        onClick={handlePickCover}
-                        className="mt-1 text-xs text-white/40 hover:text-white/70 transition-colors text-left flex items-center gap-1.5"
-                      >
-                        <ImagePlus size={12} /> Chọn ảnh bìa từ máy tính
-                      </button>
+                      <div className="flex items-center justify-between mt-1">
+                        <button
+                          onClick={handlePickCover}
+                          className="text-xs text-white/40 hover:text-white/70 transition-colors text-left flex items-center gap-1.5"
+                        >
+                          <ImagePlus size={12} /> Chọn ảnh bìa từ máy tính
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!pending.title) return
+                            const md = await window.api.fetchMetadata(pending.title)
+                            if (md) {
+                              setPending({
+                                ...pending,
+                                title: md.title,
+                                coverArt: md.coverArt || pending.coverArt,
+                                heroBackground: md.heroBackground || pending.heroBackground,
+                                base: {
+                                  ...pending.base,
+                                  developer: md.developer || pending.base.developer
+                                }
+                              })
+                            } else {
+                              alert('Không tìm thấy thông tin game.')
+                            }
+                          }}
+                          className="text-xs text-blue-400 hover:text-blue-300 transition-colors text-left flex items-center gap-1.5"
+                        >
+                          <Zap size={12} /> Tự động lấy thông tin (Steam)
+                        </button>
+                      </div>
                     </div>
                   </div>
 

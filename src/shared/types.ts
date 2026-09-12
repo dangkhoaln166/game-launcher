@@ -18,3 +18,9 @@ export interface Game {
   orderIndex?: number // manual drag-drop order
   notes?: string // personal notes for the game
 }
+
+export interface AppSettings {
+  fullscreen: boolean
+  autoStart: boolean
+  uiSoundEnabled: boolean
+}

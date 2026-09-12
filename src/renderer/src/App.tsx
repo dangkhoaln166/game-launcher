@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import PS5Layout from './components/PS5Layout'
-import { Game } from '../../shared/types'
+import SettingsModal from './components/SettingsModal'
+import { Game, AppSettings } from '../../shared/types'
 
 const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
   Promise.race([promise, new Promise<T>((res) => setTimeout(() => res(fallback), ms))])
@@ -10,8 +11,14 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   // null = no active session; string = gameId currently being tracked
   const [activeSessionGameId, setActiveSessionGameId] = useState<string | null>(null)
+  
+  const [settings, setSettings] = useState<AppSettings | null>(null)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
+    // Load Games
     setIsLoading(true)
     withTimeout(window.api.getGames(), 8000, [])
       .then((loaded) => {
@@ -22,7 +29,40 @@ function App() {
         setGames([])
         setIsLoading(false)
       })
+
+    // Load Settings
+    window.api.getSettings().then((loadedSettings) => {
+      setSettings(loadedSettings)
+    })
   }, [])
+
+  // ── Ambient Audio Logic ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!settings) return
+
+    if (settings.uiSoundEnabled) {
+      if (!audioRef.current) {
+        const audio = new Audio('https://cdn.pixabay.com/download/audio/2022/02/10/audio_fcbb862140.mp3') // Placeholder ambient
+        audio.loop = true
+        audio.volume = 0.2
+        audioRef.current = audio
+      }
+      
+      // Need user interaction to play audio in modern browsers, but in Electron it might just work if autoplay policy is relaxed
+      // We will try to play it
+      audioRef.current.play().catch((e) => console.log('Auto-play prevented:', e))
+    } else {
+      if (audioRef.current) {
+        audioRef.current.pause()
+      }
+    }
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+      }
+    }
+  }, [settings?.uiSoundEnabled])
 
   // ── Subscribe to playtime-updated from main process ──────────────────────
   useEffect(() => {
@@ -43,12 +83,9 @@ function App() {
   const handleStopSession = () => {
     if (activeSessionGameId) {
       window.api.endSession(activeSessionGameId)
-      // We no longer optimistically clear here.
-      // We wait for the main process to send 'playtime-updated' so we know it actually processed the end session.
     }
   }
 
-  /** Called when AddGameModal successfully adds games. */
   const handleGamesAdded = (newGames: Game[]) => {
     setGames((prev) => {
       const existingIds = new Set(prev.map((g) => g.id))
@@ -57,18 +94,21 @@ function App() {
     })
   }
 
-  /** Called when a game is updated in EditGameModal */
   const handleGameUpdated = (updatedGame: Game) => {
     setGames((prev) => prev.map((g) => (g.id === updatedGame.id ? updatedGame : g)))
   }
 
-  /** Called when a game is deleted from context menu */
   const handleGameDeleted = (id: string) => {
     setGames((prev) => prev.filter((g) => g.id !== id))
   }
 
   const handleGamesReordered = (reorderedGames: Game[]) => {
     setGames(reorderedGames)
+  }
+
+  const handleSaveSettings = (newSettings: AppSettings) => {
+    setSettings(newSettings)
+    window.api.saveSettings(newSettings)
   }
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -78,7 +118,7 @@ function App() {
         games={games}
         isLoading={isLoading}
         onPlay={handlePlayGame}
-        onSettings={() => alert('Chức năng cài đặt (Comming soon)')}
+        onSettings={() => setIsSettingsOpen(true)}
         onGamesAdded={handleGamesAdded}
         onGameUpdated={handleGameUpdated}
         onGameDeleted={handleGameDeleted}
@@ -86,8 +126,18 @@ function App() {
         activeSessionGameId={activeSessionGameId}
         onStopSession={handleStopSession}
       />
+
+      {settings && (
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          settings={settings}
+          onSave={handleSaveSettings}
+        />
+      )}
     </div>
   )
 }
 
 export default App
+

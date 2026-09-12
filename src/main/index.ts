@@ -6,9 +6,16 @@ import * as fs from 'fs-extra'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { GameScanner } from './GameScanner'
-import { Game } from '../shared/types'
+import { MetadataFetcher } from './MetadataFetcher'
+import { Game, AppSettings } from '../shared/types'
 
 const gameStore = new Map<string, Game>()
+
+let currentSettings: AppSettings = {
+  fullscreen: true,
+  autoStart: false,
+  uiSoundEnabled: true
+}
 
 // ── Session Manager ────────────────────────────────────────────────────────────
 // Tracks active play sessions: gameId → start timestamp (ms)
@@ -78,11 +85,44 @@ const saveStore = () => {
   }
 }
 
+const getSettingsPath = () => join(app.getPath('userData'), 'settings.json')
+
+const loadSettings = () => {
+  try {
+    const p = getSettingsPath()
+    if (fs.existsSync(p)) {
+      const data = fs.readJsonSync(p)
+      currentSettings = { ...currentSettings, ...data }
+    }
+  } catch (e) {
+    console.error('Failed to load Settings', e)
+  }
+}
+
+const saveSettingsFile = (settings: AppSettings) => {
+  try {
+    currentSettings = settings
+    fs.writeJsonSync(getSettingsPath(), settings)
+    app.setLoginItemSettings({
+      openAtLogin: settings.autoStart,
+      path: process.execPath
+    })
+    
+    // Apply fullscreen to all windows
+    BrowserWindow.getAllWindows().forEach((w) => {
+      w.setFullScreen(settings.fullscreen)
+    })
+  } catch (e) {
+    console.error('Failed to save Settings', e)
+  }
+}
+
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 720,
     show: false,
+    fullscreen: currentSettings.fullscreen,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -118,6 +158,13 @@ app.whenReady().then(() => {
 
   // Load persistence on startup
   loadStore()
+  loadSettings()
+  
+  // Apply auto-start on startup just in case
+  app.setLoginItemSettings({
+    openAtLogin: currentSettings.autoStart,
+    path: process.execPath
+  })
 
   // ── IPC: get-games ─────────────────────────────────────────────────────
   ipcMain.handle('get-games', async () => {
@@ -310,6 +357,20 @@ app.whenReady().then(() => {
   // ── IPC: open-game-folder ───────────────────────────────────────────────
   ipcMain.handle('open-game-folder', async (_, exePath: string) => {
     shell.showItemInFolder(exePath)
+  })
+
+  // ── IPC: Settings ───────────────────────────────────────────────────────
+  ipcMain.handle('get-settings', () => {
+    return currentSettings
+  })
+
+  ipcMain.handle('save-settings', (_, settings: AppSettings) => {
+    saveSettingsFile(settings)
+  })
+
+  // ── IPC: fetch-metadata ─────────────────────────────────────────────────
+  ipcMain.handle('fetch-metadata', async (_, title: string) => {
+    return await MetadataFetcher.fetchMetadata(title)
   })
 
   createWindow()
