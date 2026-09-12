@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ImagePlus, Heart } from 'lucide-react'
+import { X, ImagePlus, Heart, Zap } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Game } from '../../../shared/types'
 
@@ -128,6 +128,23 @@ export default function EditGameModal({
                   placeholder="Nhập tên game…"
                   autoFocus
                 />
+                <button
+                  onClick={async () => {
+                    if (!title) return
+                    const md = await window.api.fetchMetadata(title)
+                    if (md) {
+                      setTitle(md.title)
+                      if (md.coverArt) setCoverArt(md.coverArt)
+                      if (md.heroBackground) setHeroBackground(md.heroBackground)
+                      // We don't save developer here yet, but we could if we update game type
+                    } else {
+                      alert('Không tìm thấy thông tin game.')
+                    }
+                  }}
+                  className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors text-left flex items-center gap-1.5"
+                >
+                  <Zap size={12} /> Tự động lấy ảnh (Steam)
+                </button>
               </div>
 
               {/* Images */}

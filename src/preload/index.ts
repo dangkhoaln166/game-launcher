@@ -46,7 +46,14 @@ const api = {
     const handler = (_: unknown, data: { gameId: string; playTime: number }) => callback(data)
     ipcRenderer.on('playtime-updated', handler)
     return () => ipcRenderer.removeListener('playtime-updated', handler)
-  }
+  },
+
+  // ── Settings ───────────────────────────────────────────────────────────
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (settings: unknown) => ipcRenderer.invoke('save-settings', settings),
+
+  // ── Metadata ───────────────────────────────────────────────────────────
+  fetchMetadata: (title: string) => ipcRenderer.invoke('fetch-metadata', title)
 }
 
 if (process.contextIsolated) {

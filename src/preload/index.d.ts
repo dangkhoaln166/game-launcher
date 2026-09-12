@@ -15,6 +15,13 @@ export interface API {
   // Playtime tracking
   endSession: (gameId: string) => void
   onPlaytimeUpdated: (callback: (data: { gameId: string; playTime: number }) => void) => () => void
+  
+  // Settings
+  getSettings: () => Promise<import('../shared/types').AppSettings>
+  saveSettings: (settings: import('../shared/types').AppSettings) => Promise<void>
+
+  // Metadata
+  fetchMetadata: (title: string) => Promise<{ title: string; developer?: string; heroBackground?: string; coverArt?: string } | null>
 }
 
 declare global {

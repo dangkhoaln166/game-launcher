@@ -4,6 +4,7 @@ import { join } from 'path'
 import * as fs from 'fs-extra'
 import * as vdf from 'vdf-parser'
 import { Game } from '../shared/types'
+import { MetadataFetcher } from './MetadataFetcher'
 
 // Helper to run shell commands with a 5-second timeout
 function runCommand(cmd: string): Promise<string> {
@@ -101,15 +102,18 @@ export class GameScanner {
           const manifest = JSON.parse(content)
 
           if (manifest.bIsApplication && manifest.AppName && manifest.DisplayName) {
+            const title = manifest.DisplayName
+            // Attempt to fetch metadata
+            const md = await MetadataFetcher.fetchMetadata(title)
+            
             games.push({
               id: `epic-${manifest.AppName}`,
-              title: manifest.DisplayName,
+              title: md?.title || title,
               platform: 'epic',
               exePath: `com.epicgames.launcher://apps/${manifest.AppName}?action=launch&silent=true`,
-              heroBackground:
-                'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070', // Placeholder for epic since they don't have static predictable URLs
-              coverArt: 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=900',
-              developer: manifest.CatalogNamespace || 'Epic Games'
+              heroBackground: md?.heroBackground || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070',
+              coverArt: md?.coverArt || 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=900',
+              developer: md?.developer || manifest.CatalogNamespace || 'Epic Games'
             })
           }
         } catch (e) {
