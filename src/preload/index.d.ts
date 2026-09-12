@@ -12,6 +12,9 @@ export interface API {
   updateGame: (game: Game) => Promise<boolean>
   deleteGame: (id: string) => Promise<boolean>
   openGameFolder: (exePath: string) => Promise<void>
+  // Playtime tracking
+  endSession: (gameId: string) => void
+  onPlaytimeUpdated: (callback: (data: { gameId: string; playTime: number }) => void) => () => void
 }
 
 declare global {

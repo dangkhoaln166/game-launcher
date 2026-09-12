@@ -11,9 +11,10 @@ export interface Game {
   lastPlayed?: number // timestamp
   playTime?: number // in minutes
   developer?: string
-  
+
   // New fields for sorting and management
   playCount?: number
   isFavorite?: boolean
   orderIndex?: number // manual drag-drop order
+  notes?: string // personal notes for the game
 }

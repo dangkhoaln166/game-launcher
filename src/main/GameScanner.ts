@@ -1,4 +1,5 @@
-import { exec, execFile } from 'child_process'
+import { exec, spawn } from 'child_process'
+import type { ChildProcess } from 'child_process'
 import { join } from 'path'
 import * as fs from 'fs-extra'
 import * as vdf from 'vdf-parser'
@@ -27,17 +28,17 @@ export class GameScanner {
       const regOut = await runCommand('reg query "HKCU\\Software\\Valve\\Steam" /v SteamPath')
       const match = regOut.match(/SteamPath\s+REG_SZ\s+(.*)/)
       if (!match) return games
-      
+
       const steamPath = match[1].trim()
       const libraryFoldersPath = join(steamPath, 'steamapps', 'libraryfolders.vdf')
-      
+
       if (!(await fs.pathExists(libraryFoldersPath))) return games
 
       const libraryVdf = await fs.readFile(libraryFoldersPath, 'utf-8')
       const parsed: any = vdf.parse(libraryVdf)
-      
+
       const libraryFolders = parsed.libraryfolders || {}
-      
+
       // Iterate through all library folders
       for (const key of Object.keys(libraryFolders)) {
         const folder = libraryFolders[key]
@@ -48,7 +49,7 @@ export class GameScanner {
         if (!(await fs.pathExists(appsDir))) continue
 
         const files = await fs.readdir(appsDir)
-        const acfFiles = files.filter(f => f.startsWith('appmanifest_') && f.endsWith('.acf'))
+        const acfFiles = files.filter((f) => f.startsWith('appmanifest_') && f.endsWith('.acf'))
 
         for (const file of acfFiles) {
           try {
@@ -58,7 +59,7 @@ export class GameScanner {
 
             if (appState && appState.appid && appState.name) {
               // Ignore Steamworks Common Redistributables etc.
-              if (appState.name.includes("Steamworks")) continue
+              if (appState.name.includes('Steamworks')) continue
 
               games.push({
                 id: `steam-${appState.appid}`,
@@ -92,7 +93,7 @@ export class GameScanner {
       if (!(await fs.pathExists(manifestsPath))) return games
 
       const files = await fs.readdir(manifestsPath)
-      const itemFiles = files.filter(f => f.endsWith('.item'))
+      const itemFiles = files.filter((f) => f.endsWith('.item'))
 
       for (const file of itemFiles) {
         try {
@@ -105,7 +106,8 @@ export class GameScanner {
               title: manifest.DisplayName,
               platform: 'epic',
               exePath: `com.epicgames.launcher://apps/${manifest.AppName}?action=launch&silent=true`,
-              heroBackground: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070', // Placeholder for epic since they don't have static predictable URLs
+              heroBackground:
+                'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070', // Placeholder for epic since they don't have static predictable URLs
               coverArt: 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=900',
               developer: manifest.CatalogNamespace || 'Epic Games'
             })
@@ -120,17 +122,20 @@ export class GameScanner {
     return games
   }
 
-  static launchGame(game: Game) {
-    if (game.platform === 'steam' || game.platform === 'epic') {
-      // Launch URL protocol (Windows)
-      exec(`start "" "${game.exePath}"`)
-    } else {
-      // Launch standard executable
-      execFile(game.exePath, (error) => {
-        if (error) {
-          console.error('Failed to launch crack/custom game', error)
-        }
-      })
-    }
+  /**
+   * Launches a custom/crack .exe game using spawn() so we can track the process.
+   * Returns the ChildProcess to the caller for session tracking.
+   */
+  static launchCustomGame(game: Game): ChildProcess | null {
+    if (!game.exePath) return null
+    const child = spawn(game.exePath, [], {
+      detached: false,
+      stdio: 'ignore',
+      shell: false
+    })
+    child.on('error', (err) => {
+      console.error('Failed to launch custom game:', err.message)
+    })
+    return child
   }
 }

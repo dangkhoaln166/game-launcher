@@ -33,6 +33,20 @@ const api = {
 
   /** Opens the folder containing the game's executable */
   openGameFolder: (exePath: string) => ipcRenderer.invoke('open-game-folder', exePath),
+
+  // ── Playtime tracking ──────────────────────────────────────────────────
+  /** Manually end a session (for Steam/Epic where process exit can't be detected) */
+  endSession: (gameId: string) => ipcRenderer.send('end-session', gameId),
+
+  /**
+   * Subscribe to playtime-updated events pushed by the main process.
+   * Returns an unsubscribe function.
+   */
+  onPlaytimeUpdated: (callback: (data: { gameId: string; playTime: number }) => void) => {
+    const handler = (_: unknown, data: { gameId: string; playTime: number }) => callback(data)
+    ipcRenderer.on('playtime-updated', handler)
+    return () => ipcRenderer.removeListener('playtime-updated', handler)
+  }
 }
 
 if (process.contextIsolated) {

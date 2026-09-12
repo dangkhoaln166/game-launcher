@@ -11,7 +11,7 @@ export interface GamepadActions {
 }
 
 export function useGamepad(actions: GamepadActions) {
-  const requestRef = useRef<number>()
+  const requestRef = useRef<number | undefined>(undefined)
   const previousButtons = useRef<boolean[]>([])
   const previousAxes = useRef<number[]>([])
 
@@ -33,8 +33,8 @@ export function useGamepad(actions: GamepadActions) {
         // 14: D-pad Left
         // 15: D-pad Right
 
-        const buttons = gp.buttons.map(b => b.pressed)
-        
+        const buttons = gp.buttons.map((b) => b.pressed)
+
         // Helper to check button just pressed
         const justPressed = (idx: number) => buttons[idx] && !previousButtons.current[idx]
 
@@ -42,7 +42,7 @@ export function useGamepad(actions: GamepadActions) {
         if (justPressed(15)) actions.onRight?.()
         if (justPressed(12)) actions.onUp?.()
         if (justPressed(13)) actions.onDown?.()
-        
+
         if (justPressed(0)) actions.onAction?.()
         if (justPressed(1)) actions.onCancel?.()
         if (justPressed(3)) actions.onOptions?.()

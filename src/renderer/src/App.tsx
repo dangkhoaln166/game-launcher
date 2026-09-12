@@ -8,21 +8,47 @@ const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<
 function App() {
   const [games, setGames] = useState<Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  // null = no active session; string = gameId currently being tracked
+  const [activeSessionGameId, setActiveSessionGameId] = useState<string | null>(null)
 
   useEffect(() => {
     setIsLoading(true)
-    // 8-second hard timeout so the loading screen never freezes
     withTimeout(window.api.getGames(), 8000, [])
-      .then((loaded) => { setGames(loaded); setIsLoading(false) })
-      .catch(() => { setGames([]); setIsLoading(false) })
+      .then((loaded) => {
+        setGames(loaded)
+        setIsLoading(false)
+      })
+      .catch(() => {
+        setGames([])
+        setIsLoading(false)
+      })
+  }, [])
+
+  // ── Subscribe to playtime-updated from main process ──────────────────────
+  useEffect(() => {
+    const unsub = window.api.onPlaytimeUpdated(({ gameId, playTime }) => {
+      // Clear the active session for this game
+      setActiveSessionGameId((prev) => (prev === gameId ? null : prev))
+      // Patch the updated playTime into state
+      setGames((prev) => prev.map((g) => (g.id === gameId ? { ...g, playTime } : g)))
+    })
+    return unsub
   }, [])
 
   const handlePlayGame = (game: Game) => {
+    setActiveSessionGameId(game.id)
     window.api.launchGame(game)
   }
 
-  /** Called when AddGameModal successfully adds games.
-   *  Appends only truly NEW games (dedup by id) — no IPC round-trip. */
+  const handleStopSession = () => {
+    if (activeSessionGameId) {
+      window.api.endSession(activeSessionGameId)
+      // We no longer optimistically clear here.
+      // We wait for the main process to send 'playtime-updated' so we know it actually processed the end session.
+    }
+  }
+
+  /** Called when AddGameModal successfully adds games. */
   const handleGamesAdded = (newGames: Game[]) => {
     setGames((prev) => {
       const existingIds = new Set(prev.map((g) => g.id))
@@ -48,7 +74,6 @@ function App() {
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="w-screen h-screen bg-black overflow-hidden font-sans select-none text-white">
-
       <PS5Layout
         games={games}
         isLoading={isLoading}
@@ -58,6 +83,8 @@ function App() {
         onGameUpdated={handleGameUpdated}
         onGameDeleted={handleGameDeleted}
         onGamesReordered={handleGamesReordered}
+        activeSessionGameId={activeSessionGameId}
+        onStopSession={handleStopSession}
       />
     </div>
   )
