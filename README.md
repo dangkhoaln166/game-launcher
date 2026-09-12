@@ -58,7 +58,7 @@
    npm run build:win  # For Windows .exe
    ```
 
-##  Technical Highlights (For CV / Portfolio)
+##  Technical Highlights 
 
 - **Complex State Management:** Orchestrated synchronized states across multiple React components and Electron's Main-Renderer IPC bridge.
 - **Custom Horizontal Carousel:** Engineered a math-based 3D-like horizontal scroll system simulating the PS5 dashboard, completely independent of standard CSS scroll snap.
