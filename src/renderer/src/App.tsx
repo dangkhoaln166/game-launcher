@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import PS5Layout from './components/PS5Layout'
 import SettingsModal from './components/SettingsModal'
 import { Game, AppSettings } from '../../shared/types'
+import ambientAudio from './assets/ambient_carefree.mp3'
 
 const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
   Promise.race([promise, new Promise<T>((res) => setTimeout(() => res(fallback), ms))])
@@ -42,7 +43,7 @@ function App() {
 
     if (settings.uiSoundEnabled) {
       if (!audioRef.current) {
-        const audio = new Audio('https://cdn.pixabay.com/download/audio/2022/02/10/audio_fcbb862140.mp3') // Placeholder ambient
+        const audio = new Audio(ambientAudio)
         audio.loop = true
         audio.volume = 0.2
         audioRef.current = audio
@@ -125,6 +126,7 @@ function App() {
         onGamesReordered={handleGamesReordered}
         activeSessionGameId={activeSessionGameId}
         onStopSession={handleStopSession}
+        uiSoundEnabled={settings?.uiSoundEnabled ?? true}
       />
 
       {settings && (

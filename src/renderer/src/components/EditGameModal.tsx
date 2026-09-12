@@ -20,6 +20,7 @@ export default function EditGameModal({
   const [coverArt, setCoverArt] = useState('')
   const [heroBackground, setHeroBackground] = useState('')
   const [isFavorite, setIsFavorite] = useState(false)
+  const [collection, setCollection] = useState('')
 
   // Sync state when a game is selected
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function EditGameModal({
       setCoverArt(game.coverArt || '')
       setHeroBackground(game.heroBackground || '')
       setIsFavorite(game.isFavorite || false)
+      setCollection(game.collection || '')
     }
   }, [game, isOpen])
 
@@ -51,7 +53,8 @@ export default function EditGameModal({
       title: title.trim() || game.title,
       coverArt,
       heroBackground,
-      isFavorite
+      isFavorite,
+      collection: collection.trim() || undefined
     }
     const success = await window.api.updateGame(updatedGame)
     if (success) {
@@ -145,6 +148,20 @@ export default function EditGameModal({
                 >
                   <Zap size={12} /> Tự động lấy ảnh (Steam)
                 </button>
+              </div>
+
+              {/* Collection */}
+              <div className="flex flex-col gap-1.5 mt-2">
+                <label className="text-xs text-white/40 font-medium uppercase tracking-widest">
+                  Thể loại / Thư mục
+                </label>
+                <input
+                  type="text"
+                  value={collection}
+                  onChange={(e) => setCollection(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-white/30 transition-colors"
+                  placeholder="Ví dụ: RPG, Hành động, Bắn súng..."
+                />
               </div>
 
               {/* Images */}

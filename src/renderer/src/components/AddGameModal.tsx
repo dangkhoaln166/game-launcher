@@ -31,6 +31,7 @@ interface PendingGame {
   title: string
   coverArt: string // may be file:// URL or Unsplash fallback
   heroBackground: string
+  collection: string
 }
 
 export default function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps) {
@@ -102,7 +103,8 @@ export default function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameMo
         base: result,
         title: result.title,
         coverArt: result.coverArt || '',
-        heroBackground: result.heroBackground || ''
+        heroBackground: result.heroBackground || '',
+        collection: result.collection || ''
       })
     } catch (err: any) {
       setManual({ status: 'error', message: err?.message ?? 'Lỗi khi chọn file.' })
@@ -122,7 +124,8 @@ export default function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameMo
       ...pending.base,
       title: pending.title.trim() || pending.base.title,
       coverArt: pending.coverArt,
-      heroBackground: pending.heroBackground
+      heroBackground: pending.heroBackground,
+      collection: pending.collection.trim() || undefined
     }
     await window.api.saveGames([finalGame])
     onGameAdded([finalGame])
@@ -247,6 +250,20 @@ export default function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameMo
                         </button>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Collection */}
+                  <div className="flex flex-col gap-1 mt-1">
+                    <label className="text-xs text-white/40 font-medium uppercase tracking-widest">
+                      Thể loại / Thư mục
+                    </label>
+                    <input
+                      type="text"
+                      value={pending.collection}
+                      onChange={(e) => setPending({ ...pending, collection: e.target.value })}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-white/30 transition-colors"
+                      placeholder="Ví dụ: RPG, Bắn súng..."
+                    />
                   </div>
 
                   {/* Exe path display */}

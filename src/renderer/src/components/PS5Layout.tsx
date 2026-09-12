@@ -26,6 +26,7 @@ import EditGameModal from './EditGameModal'
 import ConfirmModal from './ConfirmModal'
 import SortGridModal from './SortGridModal'
 import NoteModal from './NoteModal'
+import DashboardView from './DashboardView'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface PS5LayoutProps {
@@ -42,6 +43,7 @@ interface PS5LayoutProps {
   activeSessionGameId?: string | null
   /** Called when user manually stops a session (Steam/Epic) */
   onStopSession?: () => void
+  uiSoundEnabled?: boolean
 }
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
@@ -275,7 +277,8 @@ export default function PS5Layout({
   onGameDeleted,
   onGamesReordered,
   activeSessionGameId,
-  onStopSession
+  onStopSession,
+  uiSoundEnabled
 }: PS5LayoutProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [time, setTime] = useState('')
@@ -283,6 +286,46 @@ export default function PS5Layout({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [gameToDelete, setGameToDelete] = useState<Game | null>(null)
+
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const isInitialSFX = useRef(true)
+
+  const playHoverSound = useCallback(() => {
+    if (!uiSoundEnabled) return
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+      }
+      const ctx = audioCtxRef.current
+      if (ctx.state === 'suspended') ctx.resume()
+      
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      
+      // Cheerful, soft "bop" sound
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(600, ctx.currentTime)
+      osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.04)
+      
+      gain.gain.setValueAtTime(0.2, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04)
+      
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.04)
+    } catch (e) {
+      // Ignore errors
+    }
+  }, [uiSoundEnabled])
+
+  useEffect(() => {
+    if (isInitialSFX.current) {
+      isInitialSFX.current = false
+      return
+    }
+    playHoverSound()
+  }, [selectedIndex, playHoverSound])
 
   // Search & Sort states
   const [searchQuery, setSearchQuery] = useState('')
@@ -296,6 +339,16 @@ export default function PS5Layout({
   const trackRef = useRef<HTMLDivElement>(null)
   const prevLengthRef = useRef<number>(-1)
   const isInitialLoadRef = useRef(true)
+
+  // Collections & Dashboard state
+  const [activeTab, setActiveTab] = useState<string>('Games')
+  const collections = useMemo(() => {
+    const set = new Set<string>()
+    games.forEach((g) => {
+      if (g.collection) set.add(g.collection)
+    })
+    return Array.from(set).sort()
+  }, [games])
 
   // ── Live session timer (seconds elapsed for currently active game) ─────────
   const [sessionSeconds, setSessionSeconds] = useState(0)
@@ -321,6 +374,10 @@ export default function PS5Layout({
       )
     }
 
+    if (activeTab !== 'Games' && activeTab !== 'Dashboard') {
+      result = result.filter((g) => g.collection === activeTab)
+    }
+
     switch (sortMode) {
       case 'alphabetical':
         result.sort((a, b) => a.title.localeCompare(b.title))
@@ -339,13 +396,18 @@ export default function PS5Layout({
     return result
   }, [games, searchQuery, sortMode])
 
-  // Index clamping
-  const clamp = useCallback(
-    (i: number) => Math.max(0, Math.min(displayedGames.length - 1, i)),
+  // Index wrapping for carousel
+  const wrapIndex = useCallback(
+    (i: number) => {
+      if (displayedGames.length === 0) return 0
+      if (i < 0) return displayedGames.length - 1
+      if (i >= displayedGames.length) return 0
+      return i
+    },
     [displayedGames.length]
   )
 
-  const safeIndex = clamp(selectedIndex)
+  const safeIndex = wrapIndex(selectedIndex)
   const selectedGame = displayedGames[safeIndex] ?? null
 
   // Real-time clock
@@ -459,8 +521,8 @@ export default function PS5Layout({
       // Don't navigate while search input is focused
       if (isSearchActive) return
 
-      if (e.key === 'ArrowLeft') setSelectedIndex((p) => clamp(p - 1))
-      if (e.key === 'ArrowRight') setSelectedIndex((p) => clamp(p + 1))
+      if (e.key === 'ArrowLeft') setSelectedIndex((p) => wrapIndex(p - 1))
+      if (e.key === 'ArrowRight') setSelectedIndex((p) => wrapIndex(p + 1))
       if (
         e.key === 'Enter' &&
         selectedGame &&
@@ -475,7 +537,7 @@ export default function PS5Layout({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [
-    clamp,
+    wrapIndex,
     selectedGame,
     onPlay,
     isMenuOpen,
@@ -487,8 +549,8 @@ export default function PS5Layout({
 
   // Gamepad support
   useGamepad({
-    onLeft: () => setSelectedIndex((p) => clamp(p - 1)),
-    onRight: () => setSelectedIndex((p) => clamp(p + 1)),
+    onLeft: () => setSelectedIndex((p) => wrapIndex(p - 1)),
+    onRight: () => setSelectedIndex((p) => wrapIndex(p + 1)),
     onAction: () => selectedGame && onPlay(selectedGame),
     onOptions: () => onSettings?.()
   })
@@ -557,12 +619,33 @@ export default function PS5Layout({
             >
               +
             </button>
-            <button className="text-xl font-semibold text-white hover:text-white/75 transition-colors">
-              Games
+            <button
+              onClick={() => setActiveTab('Dashboard')}
+              className={`text-xl transition-colors ${activeTab === 'Dashboard' ? 'font-semibold text-white' : 'font-medium text-white/40 hover:text-white/65'}`}
+            >
+              Thống kê
             </button>
-            <button className="text-xl font-medium text-white/40 hover:text-white/65 transition-colors">
-              Media
+            <button
+              onClick={() => {
+                setActiveTab('Games')
+                setSelectedIndex(0)
+              }}
+              className={`text-xl transition-colors ${activeTab === 'Games' ? 'font-semibold text-white' : 'font-medium text-white/40 hover:text-white/65'}`}
+            >
+              Tất cả
             </button>
+            {collections.map((col) => (
+              <button
+                key={col}
+                onClick={() => {
+                  setActiveTab(col)
+                  setSelectedIndex(0)
+                }}
+                className={`text-xl transition-colors ${activeTab === col ? 'font-semibold text-white' : 'font-medium text-white/40 hover:text-white/65'}`}
+              >
+                {col}
+              </button>
+            ))}
           </div>
 
           {/* Right: icons + clock */}
@@ -676,43 +759,49 @@ export default function PS5Layout({
           </div>
         </div>
 
-        {/* ── Carousel ────────────────────────────────────────────────── */}
-        {/*
-          Use overflowX:hidden + overflowY:visible so the scroll clips
-          horizontally but the scale transform is NOT vertically clipped.
-        */}
-        <div style={{ width: '100%', overflowX: 'hidden', overflowY: 'visible' }}>
-          <div
-            ref={trackRef}
-            style={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              gap: CARD_GAP,
-              paddingLeft: 4,
-              overflowX: 'scroll',
-              overflowY: 'visible',
-              scrollbarWidth: 'none'
-            }}
-          >
-            {displayedGames.map((game, i) => (
-              <GameCard
-                key={game.id}
-                game={game}
-                isSelected={i === selectedIndex}
-                onSelect={() => setSelectedIndex(i)}
-                onLaunch={() => onPlay(game)}
-              />
-            ))}
-          </div>
-        </div>
+        {/* ── Main View Area ────────────────────────────────────────────── */}
+        {activeTab === 'Dashboard' ? (
+          <AnimatePresence>
+            <DashboardView games={games} />
+          </AnimatePresence>
+        ) : (
+          <>
+            {/* ── Carousel ────────────────────────────────────────────────── */}
+            <div style={{ width: '100%', overflowX: 'hidden', overflowY: 'visible' }}>
+              <div
+                ref={trackRef}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  gap: CARD_GAP,
+                  paddingLeft: 4,
+                  overflowX: 'scroll',
+                  overflowY: 'visible',
+                  scrollbarWidth: 'none'
+                }}
+              >
+                {displayedGames.map((game, i) => (
+                  <GameCard
+                    key={game.id}
+                    game={game}
+                    isSelected={i === selectedIndex}
+                    onSelect={() => setSelectedIndex(i)}
+                    onLaunch={() => onPlay(game)}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* ── Push bottom content to screen bottom ─────────────────────── */}
-        <div style={{ flex: 1 }} />
+        {activeTab !== 'Dashboard' && <div style={{ flex: 1 }} />}
 
         {/* ── Bottom info (animates per game change) ───────────────────── */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={selectedGame.id}
+        {activeTab !== 'Dashboard' && (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedGame.id}
             className="flex justify-between items-end"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -936,6 +1025,7 @@ export default function PS5Layout({
             )}
           </motion.div>
         </AnimatePresence>
+        )}
       </div>
 
       {/* ── Add Game Modal ──────────────────────────────────────────── */}

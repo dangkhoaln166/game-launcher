@@ -17,6 +17,7 @@ export interface Game {
   isFavorite?: boolean
   orderIndex?: number // manual drag-drop order
   notes?: string // personal notes for the game
+  collection?: string // Category/Genre folder for the game
 }
 
 export interface AppSettings {
