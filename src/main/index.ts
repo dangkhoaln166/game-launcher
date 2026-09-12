@@ -1,4 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { exec } from 'child_process'
 import * as crypto from 'crypto'
 import { join, basename, extname } from 'path'
 import * as fs from 'fs-extra'
@@ -9,6 +10,50 @@ import { Game } from '../shared/types'
 
 const gameStore = new Map<string, Game>()
 
+// ── Session Manager ────────────────────────────────────────────────────────────
+// Tracks active play sessions: gameId → start timestamp (ms)
+const activeSessions = new Map<string, number>()
+
+function logDebug(msg: string) {
+  if (is.dev) console.log(`[Session Debug] ${msg}`)
+}
+
+/** Finalise a session: calc elapsed time, persist to DB, ALWAYS notify renderer. */
+function finaliseSession(gameId: string, reason: string): void {
+  const startTime = activeSessions.get(gameId)
+  if (startTime === undefined) {
+    logDebug(`finaliseSession(${gameId}) called by ${reason} but session already ended.`)
+    return // already finalised
+  }
+  activeSessions.delete(gameId)
+
+  const elapsedMs = Date.now() - startTime
+  const game = gameStore.get(gameId)
+
+  logDebug(
+    `finaliseSession(${gameId}) called by ${reason}. Elapsed: ${elapsedMs}ms. Game found: ${!!game}`
+  )
+  if (!game) return
+
+  // Save playtime if at least 5 seconds were played (rounds up, min 1 minute)
+  if (elapsedMs >= 5000) {
+    const addedMinutes = Math.max(1, Math.round(elapsedMs / 60000))
+    game.playTime = (game.playTime || 0) + addedMinutes
+    gameStore.set(gameId, game)
+    saveStore()
+    logDebug(`[Session SAVED] ${gameId}: +${addedMinutes} min (total: ${game.playTime} min)`)
+  } else {
+    logDebug(`[Session DISCARDED] ${gameId}: too short (< 5s)`)
+  }
+
+  // ALWAYS notify renderer — even 0 minutes, so UI clears the live timer
+  BrowserWindow.getAllWindows().forEach((w) => {
+    if (!w.isDestroyed()) {
+      w.webContents.send('playtime-updated', { gameId, playTime: game.playTime ?? 0 })
+    }
+  })
+}
+
 const getDbPath = () => join(app.getPath('userData'), 'games.json')
 
 const loadStore = () => {
@@ -17,7 +62,7 @@ const loadStore = () => {
     if (fs.existsSync(p)) {
       const data = fs.readJsonSync(p)
       if (Array.isArray(data)) {
-        data.forEach(g => gameStore.set(g.id, g))
+        data.forEach((g) => gameStore.set(g.id, g))
       }
     }
   } catch (e) {
@@ -82,7 +127,7 @@ app.whenReady().then(() => {
     // First run: auto-scan Steam + Epic
     const [steamGames, epicGames] = await Promise.all([
       GameScanner.scanSteamGames().catch(() => [] as Game[]),
-      GameScanner.scanEpicGames().catch(() => [] as Game[]),
+      GameScanner.scanEpicGames().catch(() => [] as Game[])
     ])
     const all = [...steamGames, ...epicGames]
     all.forEach((g) => gameStore.set(g.id, g))
@@ -92,6 +137,13 @@ app.whenReady().then(() => {
 
   // ── IPC: launch-game ────────────────────────────────────────────────────
   ipcMain.on('launch-game', (_, game: Game) => {
+    logDebug(`launch-game requested for ${game.id} (${game.title})`)
+    if (activeSessions.has(game.id)) {
+      logDebug(`game ${game.id} already active.`)
+      return
+    }
+
+    // Update play stats
     const existing = gameStore.get(game.id)
     if (existing) {
       existing.playCount = (existing.playCount || 0) + 1
@@ -100,11 +152,69 @@ app.whenReady().then(() => {
       saveStore()
     }
 
+    // Start session timer
+    activeSessions.set(game.id, Date.now())
+
     if (game.platform === 'steam' || game.platform === 'epic') {
+      // URL protocol launch — session must be ended manually by renderer
       if (game.exePath) shell.openExternal(game.exePath)
     } else {
-      GameScanner.launchGame(game)
+      // Custom/crack game — track via process exit
+      const child = GameScanner.launchCustomGame(game)
+      if (child && child.pid) {
+        let alreadyFinalised = false
+        let pollId: NodeJS.Timeout
+
+        const endSession = (reason: string) => {
+          if (!alreadyFinalised) {
+            alreadyFinalised = true
+            clearInterval(pollId)
+            finaliseSession(game.id, reason)
+          }
+        }
+
+        // 1. Standard event listeners
+        child.on('exit', () => endSession('child-exit'))
+        child.on('error', () => {
+          endSession('child-error')
+          // Fallback UI clear if it errored out immediately
+          activeSessions.delete(game.id)
+          BrowserWindow.getAllWindows().forEach((w) => {
+            if (!w.isDestroyed()) {
+              w.webContents.send('playtime-updated', {
+                gameId: game.id,
+                playTime: gameStore.get(game.id)?.playTime ?? 0
+              })
+            }
+          })
+        })
+
+        // 2. Aggressive polling fallback using OS-level process check
+        // Sometimes child.on('exit') fails to fire on Windows if the game leaves zombie child processes.
+        pollId = setInterval(() => {
+          if (!activeSessions.has(game.id)) {
+            clearInterval(pollId)
+            return
+          }
+          try {
+            // Signal 0 checks for process existence without killing it
+            process.kill(child.pid as number, 0)
+          } catch (e) {
+            // If process.kill throws, the process no longer exists
+            endSession('process-kill-throw')
+          }
+        }, 2000)
+      } else {
+        // spawn() returned null or failed to get PID
+        logDebug(`spawn() failed for ${game.id}`)
+        activeSessions.delete(game.id)
+      }
     }
+  })
+
+  // ── IPC: end-session (renderer-triggered, for Steam/Epic/Manual fallback) ─
+  ipcMain.on('end-session', (_, gameId: string) => {
+    finaliseSession(gameId, 'ipc-end-session')
   })
 
   // ── IPC: select-exe-file ────────────────────────────────────────────────
@@ -114,9 +224,9 @@ app.whenReady().then(() => {
       title: 'Chọn file game',
       filters: [
         { name: 'Executable', extensions: ['exe', 'lnk'] },
-        { name: 'All Files', extensions: ['*'] },
+        { name: 'All Files', extensions: ['*'] }
       ],
-      properties: ['openFile'],
+      properties: ['openFile']
     })
 
     if (result.canceled || !result.filePaths.length) return null
@@ -132,7 +242,7 @@ app.whenReady().then(() => {
       exePath,
       heroBackground: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070',
       coverArt: 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=900',
-      developer: 'Custom Game',
+      developer: 'Custom Game'
     }
     return game
   })
@@ -143,10 +253,10 @@ app.whenReady().then(() => {
     const result = await dialog.showOpenDialog(focusedWindow ?? BrowserWindow.getAllWindows()[0], {
       title: 'Chọn ảnh bìa game',
       filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif'] }],
-      properties: ['openFile'],
+      properties: ['openFile']
     })
     if (result.canceled || !result.filePaths.length) return null
-    
+
     // Read file and convert to base64 to completely bypass Electron's webSecurity and cache issues
     try {
       const filePath = result.filePaths[0]
@@ -207,6 +317,13 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+app.on('before-quit', () => {
+  // Save all active sessions before the app exits
+  for (const gameId of activeSessions.keys()) {
+    finaliseSession(gameId, 'app-quit')
+  }
 })
 
 app.on('window-all-closed', () => {

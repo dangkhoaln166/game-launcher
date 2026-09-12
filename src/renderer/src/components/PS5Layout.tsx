@@ -2,11 +2,30 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Game } from '../../../shared/types'
 import { useGamepad } from '../hooks/useGamepad'
-import { Search, Settings as SettingsIcon, MoreHorizontal, User, Play, Pen, Trash2, FolderOpen, Heart, ArrowDownAz, Activity, GripVertical } from 'lucide-react'
+import {
+  Search,
+  Settings as SettingsIcon,
+  MoreHorizontal,
+  User,
+  Play,
+  Pen,
+  Trash2,
+  FolderOpen,
+  Heart,
+  ArrowDownAz,
+  Activity,
+  GripVertical,
+  X as XIcon,
+  FileText,
+  Mail,
+  Square,
+  Clock
+} from 'lucide-react'
 import AddGameModal from './AddGameModal'
 import EditGameModal from './EditGameModal'
 import ConfirmModal from './ConfirmModal'
 import SortGridModal from './SortGridModal'
+import NoteModal from './NoteModal'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface PS5LayoutProps {
@@ -19,6 +38,10 @@ interface PS5LayoutProps {
   onGameUpdated?: (game: Game) => void
   onGameDeleted?: (id: string) => void
   onGamesReordered?: (games: Game[]) => void
+  /** gameId currently being session-tracked; null if no active session */
+  activeSessionGameId?: string | null
+  /** Called when user manually stops a session (Steam/Epic) */
+  onStopSession?: () => void
 }
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
@@ -112,7 +135,7 @@ function GameCard({ game, isSelected, onSelect, onLaunch }: CardProps) {
         // Extra top padding gives room for the scale transform without clipping
         paddingTop: 24,
         paddingBottom: 0,
-        position: 'relative',
+        position: 'relative'
       }}
     >
       <motion.div
@@ -121,7 +144,7 @@ function GameCard({ game, isSelected, onSelect, onLaunch }: CardProps) {
         animate={{
           scale: isSelected ? 1.2 : 1,
           y: isSelected ? -6 : 0,
-          opacity: isSelected ? 1 : 0.75,
+          opacity: isSelected ? 1 : 0.75
         }}
         whileHover={{ opacity: 1 }}
         whileTap={{ scale: isSelected ? 1.12 : 0.93 }}
@@ -138,7 +161,7 @@ function GameCard({ game, isSelected, onSelect, onLaunch }: CardProps) {
           transformOrigin: 'bottom center',
           boxShadow: isSelected
             ? '0 0 0 3px rgba(255,255,255,1), 0 16px 40px rgba(0,0,0,0.9)'
-            : '0 4px 12px rgba(0,0,0,0.5)',
+            : '0 4px 12px rgba(0,0,0,0.5)'
         }}
       >
         <img
@@ -151,6 +174,46 @@ function GameCard({ game, isSelected, onSelect, onLaunch }: CardProps) {
           }}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
+        {/* Favorite badge */}
+        {game.isFavorite && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 5,
+              right: 5,
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              background: 'rgba(0,0,0,0.55)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <Heart size={10} fill="#f87171" color="#f87171" />
+          </div>
+        )}
+        {/* Note badge */}
+        {game.notes && game.notes.trim() && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 5,
+              left: 5,
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              background: 'rgba(0,0,0,0.55)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <Mail size={9} color="#fbbf24" />
+          </div>
+        )}
       </motion.div>
 
       {/* Game label — shown only for selected card */}
@@ -169,7 +232,7 @@ function GameCard({ game, isSelected, onSelect, onLaunch }: CardProps) {
               alignItems: 'center',
               gap: 6,
               whiteSpace: 'nowrap',
-              pointerEvents: 'none',
+              pointerEvents: 'none'
             }}
           >
             <span
@@ -179,12 +242,19 @@ function GameCard({ game, isSelected, onSelect, onLaunch }: CardProps) {
                 background: '#fff',
                 color: '#000',
                 padding: '1px 4px',
-                borderRadius: 3,
+                borderRadius: 3
               }}
             >
               PS5
             </span>
-            <span style={{ color: '#fff', fontSize: 13, fontWeight: 500, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+            <span
+              style={{
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 500,
+                textShadow: '0 1px 4px rgba(0,0,0,0.6)'
+              }}
+            >
               {game.title}
             </span>
           </motion.div>
@@ -195,32 +265,62 @@ function GameCard({ game, isSelected, onSelect, onLaunch }: CardProps) {
 }
 
 // ─── Main layout ──────────────────────────────────────────────────────────────
-export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGamesAdded, onGameUpdated, onGameDeleted, onGamesReordered }: PS5LayoutProps) {
+export default function PS5Layout({
+  games,
+  isLoading,
+  onPlay,
+  onSettings,
+  onGamesAdded,
+  onGameUpdated,
+  onGameDeleted,
+  onGamesReordered,
+  activeSessionGameId,
+  onStopSession
+}: PS5LayoutProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [time, setTime] = useState('')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [gameToDelete, setGameToDelete] = useState<Game | null>(null)
-  
+
   // Search & Sort states
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchActive, setIsSearchActive] = useState(false)
-  const [sortMode, setSortMode] = useState<'manual' | 'alphabetical' | 'most-played' | 'favorites'>('manual')
+  const [sortMode, setSortMode] = useState<'manual' | 'alphabetical' | 'most-played' | 'favorites'>(
+    'manual'
+  )
   const [isSortGridOpen, setIsSortGridOpen] = useState(false)
+  const [isNoteOpen, setIsNoteOpen] = useState(false)
 
   const trackRef = useRef<HTMLDivElement>(null)
   const prevLengthRef = useRef<number>(-1)
   const isInitialLoadRef = useRef(true)
+
+  // ── Live session timer (seconds elapsed for currently active game) ─────────
+  const [sessionSeconds, setSessionSeconds] = useState(0)
+
+  // Reset + tick whenever activeSessionGameId changes
+  useEffect(() => {
+    if (!activeSessionGameId) {
+      setSessionSeconds(0)
+      return
+    }
+    setSessionSeconds(0)
+    const id = setInterval(() => setSessionSeconds((s) => s + 1), 1000)
+    return () => clearInterval(id)
+  }, [activeSessionGameId])
 
   // Derived state
   const displayedGames = useMemo(() => {
     let result = [...games]
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
-      result = result.filter(g => g.title.toLowerCase().includes(q) || g.developer?.toLowerCase().includes(q))
+      result = result.filter(
+        (g) => g.title.toLowerCase().includes(q) || g.developer?.toLowerCase().includes(q)
+      )
     }
-    
+
     switch (sortMode) {
       case 'alphabetical':
         result.sort((a, b) => a.title.localeCompare(b.title))
@@ -319,7 +419,19 @@ export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGame
         onSaveOrder={async (updatedGames) => {
           await window.api.saveGames(updatedGames)
           onGamesReordered?.(updatedGames)
-          setSortMode('manual') // Auto switch to manual mode when order is saved
+          setSortMode('manual')
+        }}
+      />
+      <NoteModal
+        isOpen={isNoteOpen}
+        gameTitle={selectedGame?.title ?? ''}
+        initialNote={selectedGame?.notes ?? ''}
+        onClose={() => setIsNoteOpen(false)}
+        onSave={async (note) => {
+          if (!selectedGame) return
+          const updated = { ...selectedGame, notes: note }
+          await window.api.updateGame(updated)
+          onGameUpdated?.(updated)
         }}
       />
     </>
@@ -328,27 +440,57 @@ export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGame
   // Keyboard navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Escape: close menu, or deactivate search
+      if (e.key === 'Escape') {
+        if (isMenuOpen) {
+          setIsMenuOpen(false)
+          return
+        }
+        if (isSearchActive) {
+          setSearchQuery('')
+          setIsSearchActive(false)
+          return
+        }
+      }
       // Close menu if open when navigating
-      if (isMenuOpen && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Escape')) {
+      if (isMenuOpen && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         setIsMenuOpen(false)
       }
-      
+      // Don't navigate while search input is focused
+      if (isSearchActive) return
+
       if (e.key === 'ArrowLeft') setSelectedIndex((p) => clamp(p - 1))
       if (e.key === 'ArrowRight') setSelectedIndex((p) => clamp(p + 1))
-      if (e.key === 'Enter' && selectedGame && !isMenuOpen && !isEditModalOpen && !isAddModalOpen && !gameToDelete) {
+      if (
+        e.key === 'Enter' &&
+        selectedGame &&
+        !isMenuOpen &&
+        !isEditModalOpen &&
+        !isAddModalOpen &&
+        !gameToDelete
+      ) {
         onPlay(selectedGame)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [clamp, selectedGame, onPlay, isMenuOpen, isEditModalOpen, isAddModalOpen, gameToDelete])
+  }, [
+    clamp,
+    selectedGame,
+    onPlay,
+    isMenuOpen,
+    isEditModalOpen,
+    isAddModalOpen,
+    gameToDelete,
+    isSearchActive
+  ])
 
   // Gamepad support
   useGamepad({
     onLeft: () => setSelectedIndex((p) => clamp(p - 1)),
     onRight: () => setSelectedIndex((p) => clamp(p + 1)),
     onAction: () => selectedGame && onPlay(selectedGame),
-    onOptions: () => onSettings?.(),
+    onOptions: () => onSettings?.()
   })
 
   // Scroll track so selected card is always visible near the left
@@ -362,14 +504,27 @@ export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGame
   }, [selectedIndex])
 
   // ── Early returns — wrap with addModal so IPC works even before games load
-  if (isLoading) return <>{<LoadingScreen />}{addModal}</>
-  if (!games.length) return (
-    <>
-      <EmptyScreen onAddGame={() => setIsAddModalOpen(true)} />
-      {addModal}
-    </>
-  )
-  if (!selectedGame) return <>{<LoadingScreen />}{addModal}</>
+  if (isLoading)
+    return (
+      <>
+        {<LoadingScreen />}
+        {addModal}
+      </>
+    )
+  if (!games.length)
+    return (
+      <>
+        <EmptyScreen onAddGame={() => setIsAddModalOpen(true)} />
+        {addModal}
+      </>
+    )
+  if (!selectedGame)
+    return (
+      <>
+        {<LoadingScreen />}
+        {addModal}
+      </>
+    )
 
   const CARD_GAP = 12
 
@@ -416,23 +571,46 @@ export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGame
             <div className="relative flex items-center">
               <AnimatePresence>
                 {isSearchActive && (
-                  <motion.input
+                  <motion.div
+                    className="absolute right-10 flex items-center"
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 200, opacity: 1 }}
+                    animate={{ width: 220, opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    autoFocus
-                    placeholder="Tìm kiếm game..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onBlur={() => !searchQuery && setIsSearchActive(false)}
-                    className="absolute right-10 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm text-white placeholder-white/50 outline-none backdrop-blur-md"
-                  />
+                  >
+                    <input
+                      autoFocus
+                      placeholder="Tìm kiếm game..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setSearchQuery('')
+                          setIsSearchActive(false)
+                        }
+                      }}
+                      className="w-full bg-white/10 border border-white/20 rounded-full pl-4 pr-8 py-1.5 text-sm text-white placeholder-white/50 outline-none backdrop-blur-md focus:border-white/40"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => {
+                          setSearchQuery('')
+                        }}
+                        className="absolute right-3 text-white/40 hover:text-white transition-colors"
+                      >
+                        <XIcon size={13} />
+                      </button>
+                    )}
+                  </motion.div>
                 )}
               </AnimatePresence>
               <button
-                onClick={() => setIsSearchActive(true)}
-                className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                onClick={() => setIsSearchActive((v) => !v)}
+                className={`p-2 rounded-full transition-colors ${
+                  isSearchActive || searchQuery
+                    ? 'bg-white/15 text-white'
+                    : 'hover:bg-white/10 text-white/70 hover:text-white'
+                }`}
               >
                 <Search size={22} />
               </button>
@@ -446,14 +624,39 @@ export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGame
                 {sortMode === 'most-played' && <Activity size={22} />}
                 {sortMode === 'favorites' && <Heart size={22} />}
               </button>
-              
+
               <div className="absolute top-full right-0 mt-2 w-48 py-2 bg-[#1a1a24]/90 backdrop-blur-xl border border-white/10 rounded-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                <button onClick={() => setSortMode('manual')} className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${sortMode==='manual'?'text-white font-medium':'text-white/60'}`}>Sắp xếp thủ công</button>
-                <button onClick={() => setSortMode('alphabetical')} className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${sortMode==='alphabetical'?'text-white font-medium':'text-white/60'}`}>Theo chữ cái (A-Z)</button>
-                <button onClick={() => setSortMode('most-played')} className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${sortMode==='most-played'?'text-white font-medium':'text-white/60'}`}>Chơi nhiều nhất</button>
-                <button onClick={() => setSortMode('favorites')} className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${sortMode==='favorites'?'text-white font-medium':'text-white/60'}`}>Yêu thích</button>
+                <button
+                  onClick={() => setSortMode('manual')}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${sortMode === 'manual' ? 'text-white font-medium' : 'text-white/60'}`}
+                >
+                  Sắp xếp thủ công
+                </button>
+                <button
+                  onClick={() => setSortMode('alphabetical')}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${sortMode === 'alphabetical' ? 'text-white font-medium' : 'text-white/60'}`}
+                >
+                  Theo chữ cái (A-Z)
+                </button>
+                <button
+                  onClick={() => setSortMode('most-played')}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${sortMode === 'most-played' ? 'text-white font-medium' : 'text-white/60'}`}
+                >
+                  Chơi nhiều nhất
+                </button>
+                <button
+                  onClick={() => setSortMode('favorites')}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${sortMode === 'favorites' ? 'text-white font-medium' : 'text-white/60'}`}
+                >
+                  Yêu thích
+                </button>
                 <div className="h-px bg-white/10 my-1" />
-                <button onClick={() => setIsSortGridOpen(true)} className="w-full text-left px-4 py-2 text-sm text-white/90 hover:text-white hover:bg-white/10 transition-colors">Chỉnh sửa thứ tự...</button>
+                <button
+                  onClick={() => setIsSortGridOpen(true)}
+                  className="w-full text-left px-4 py-2 text-sm text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  Chỉnh sửa thứ tự...
+                </button>
               </div>
             </div>
 
@@ -488,7 +691,7 @@ export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGame
               paddingLeft: 4,
               overflowX: 'scroll',
               overflowY: 'visible',
-              scrollbarWidth: 'none',
+              scrollbarWidth: 'none'
             }}
           >
             {displayedGames.map((game, i) => (
@@ -522,24 +725,135 @@ export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGame
                 {selectedGame.developer ?? 'Game'}
               </div>
 
-              <h1 className="text-3xl font-light leading-snug tracking-tight text-white drop-shadow-lg">
-                {selectedGame.title}
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-light leading-snug tracking-tight text-white drop-shadow-lg">
+                  {selectedGame.title}
+                </h1>
+                {/* Inline favorite badge next to title */}
+                {selectedGame.isFavorite && (
+                  <Heart
+                    size={18}
+                    fill="#f87171"
+                    color="#f87171"
+                    className="flex-shrink-0 drop-shadow"
+                  />
+                )}
+              </div>
 
               <p className="text-sm text-white/50">
-                {selectedGame.playTime
-                  ? `${Math.round(selectedGame.playTime / 60)}h played`
-                  : 'Not played yet'}
+                {activeSessionGameId === selectedGame.id
+                  ? (() => {
+                      const totalSecs = sessionSeconds + (selectedGame.playTime ?? 0) * 60
+                      const h = Math.floor(totalSecs / 3600)
+                      const m = Math.floor((totalSecs % 3600) / 60)
+                      const s = totalSecs % 60
+                      return h > 0
+                        ? `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`
+                        : `${m}m ${String(s).padStart(2, '0')}s`
+                    })()
+                  : selectedGame.playTime
+                    ? (() => {
+                        const totalMins = selectedGame.playTime
+                        const h = Math.floor(totalMins / 60)
+                        const m = totalMins % 60
+                        return h > 0 ? `${h}h ${m}m đã chơi` : `${m}m đã chơi`
+                      })()
+                    : 'Chưa từng chơi'}
               </p>
 
-              <div className="flex items-center gap-3 mt-1 relative">
-                <button
-                  onClick={() => onPlay(selectedGame)}
-                  className="flex items-center gap-2 px-7 py-2.5 rounded-full font-semibold text-base bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 backdrop-blur-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/40"
+              {/* Notes preview — compact amber chip */}
+              {selectedGame.notes && selectedGame.notes.trim() && (
+                <motion.button
+                  key={selectedGame.id + '-notechip'}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={() => setIsNoteOpen(true)}
+                  className="flex items-center gap-2 self-start px-3 py-1.5 rounded-xl bg-amber-400/15 border border-amber-400/25 backdrop-blur-sm hover:bg-amber-400/25 transition-colors cursor-pointer"
                 >
-                  <Play size={15} className="fill-current" />
-                  Play
+                  <Mail size={12} className="text-amber-400 flex-shrink-0" />
+                  <p className="text-xs text-amber-200/80 leading-relaxed line-clamp-1 max-w-[260px]">
+                    {selectedGame.notes}
+                  </p>
+                </motion.button>
+              )}
+
+              <div className="flex items-center gap-3 mt-1 relative">
+                {activeSessionGameId === selectedGame.id ? (
+                  /* ── ACTIVE SESSION ───────────────────────────── */
+                  <>
+                    {/* NOW PLAYING badge */}
+                    <motion.div
+                      animate={{ opacity: [1, 0.5, 1] }}
+                      transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-green-500/20 border border-green-400/40 text-green-300 text-sm font-semibold backdrop-blur-md"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+                      <Clock size={13} />
+                      {(() => {
+                        const h = Math.floor(sessionSeconds / 3600)
+                        const m = Math.floor((sessionSeconds % 3600) / 60)
+                        const s = sessionSeconds % 60
+                        return h > 0
+                          ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+                          : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+                      })()}{' '}
+                      Đang chơi
+                    </motion.div>
+
+                    {/* Stop Tracking — manual fallback for all games */}
+                    <button
+                      onClick={onStopSession}
+                      title="Dừng theo dõi thời gian chơi"
+                      className="w-11 h-11 rounded-full flex items-center justify-center bg-red-500/20 border border-red-400/30 text-red-400 hover:bg-red-500/30 backdrop-blur-md transition-all duration-200 focus:outline-none"
+                    >
+                      <Square size={15} fill="currentColor" />
+                    </button>
+                  </>
+                ) : (
+                  /* ── NORMAL ───────────────────────────────────── */
+                  <button
+                    onClick={() => onPlay(selectedGame)}
+                    className="flex items-center gap-2 px-7 py-2.5 rounded-full font-semibold text-base bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 backdrop-blur-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/40"
+                  >
+                    <Play size={15} className="fill-current" />
+                    Play
+                  </button>
+                )}
+
+                {/* Quick favorite toggle */}
+                <button
+                  onClick={async () => {
+                    const updated = { ...selectedGame, isFavorite: !selectedGame.isFavorite }
+                    await window.api.updateGame(updated)
+                    onGameUpdated?.(updated)
+                  }}
+                  title={selectedGame.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center border backdrop-blur-md transition-all duration-200 focus:outline-none ${
+                    selectedGame.isFavorite
+                      ? 'bg-red-500/20 border-red-400/30 text-red-400 hover:bg-red-500/30'
+                      : 'bg-white/10 border-white/20 text-white/60 hover:bg-white/20 hover:text-white'
+                  }`}
+                >
+                  <Heart size={17} fill={selectedGame.isFavorite ? 'currentColor' : 'none'} />
                 </button>
+
+                {/* Note button */}
+                <button
+                  onClick={() => setIsNoteOpen(true)}
+                  title={selectedGame.notes ? 'Xem / Sửa ghi chú' : 'Thêm ghi chú'}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center border backdrop-blur-md transition-all duration-200 focus:outline-none ${
+                    selectedGame.notes && selectedGame.notes.trim()
+                      ? 'bg-amber-500/20 border-amber-400/30 text-amber-400 hover:bg-amber-500/30'
+                      : 'bg-white/10 border-white/20 text-white/60 hover:bg-white/20 hover:text-white'
+                  }`}
+                >
+                  {selectedGame.notes && selectedGame.notes.trim() ? (
+                    <Mail size={17} />
+                  ) : (
+                    <FileText size={17} />
+                  )}
+                </button>
+
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
                   className="w-11 h-11 rounded-full flex items-center justify-center bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 backdrop-blur-md transition-all duration-200 focus:outline-none"
@@ -555,7 +869,7 @@ export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGame
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 10 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute left-[140px] bottom-full mb-3 w-56 bg-black/80 backdrop-blur-xl border border-white/15 rounded-2xl p-2 flex flex-col gap-1 shadow-2xl"
+                      className="absolute left-[188px] bottom-full mb-3 w-56 bg-black/80 backdrop-blur-xl border border-white/15 rounded-2xl p-2 flex flex-col gap-1 shadow-2xl"
                       style={{ zIndex: 50 }}
                     >
                       <button
@@ -567,7 +881,11 @@ export default function PS5Layout({ games, isLoading, onPlay, onSettings, onGame
                         }}
                         className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
                       >
-                        <Heart size={16} fill={selectedGame.isFavorite ? 'currentColor' : 'none'} className={selectedGame.isFavorite ? 'text-red-400' : ''} />
+                        <Heart
+                          size={16}
+                          fill={selectedGame.isFavorite ? 'currentColor' : 'none'}
+                          className={selectedGame.isFavorite ? 'text-red-400' : ''}
+                        />
                         {selectedGame.isFavorite ? 'Bỏ Yêu thích' : 'Yêu thích'}
                       </button>
 

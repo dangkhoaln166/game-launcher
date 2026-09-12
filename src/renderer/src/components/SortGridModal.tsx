@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
-import { Game } from '../../shared/types'
+import { Game } from '../../../shared/types'
 import { X, GripVertical } from 'lucide-react'
 
 interface SortGridModalProps {
@@ -31,10 +31,12 @@ export default function SortGridModal({ isOpen, games, onClose, onSaveOrder }: S
         <motion.div
           className="fixed inset-0 flex items-center justify-center p-8"
           style={{ zIndex: 100 }}
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
         >
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
-          
+
           <motion.div
             className="relative bg-[#14141a] border border-white/10 rounded-3xl w-full max-w-2xl h-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden"
             initial={{ scale: 0.95, y: 20 }}
@@ -46,16 +48,26 @@ export default function SortGridModal({ isOpen, games, onClose, onSaveOrder }: S
             <div className="flex items-center justify-between px-8 py-6 border-b border-white/10 bg-white/[0.02]">
               <div>
                 <h2 className="text-xl font-bold text-white tracking-tight">Tùy chỉnh thứ tự</h2>
-                <p className="text-white/50 text-sm mt-1">Kéo thả biểu tượng ≡ để thay đổi vị trí game trên màn hình chính.</p>
+                <p className="text-white/50 text-sm mt-1">
+                  Kéo thả biểu tượng ≡ để thay đổi vị trí game trên màn hình chính.
+                </p>
               </div>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors">
+              <button
+                onClick={onClose}
+                className="p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
 
             {/* List Area */}
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-              <Reorder.Group axis="y" values={items} onReorder={setItems} className="flex flex-col gap-2">
+              <Reorder.Group
+                axis="y"
+                values={items}
+                onReorder={setItems}
+                className="flex flex-col gap-2"
+              >
                 {items.map((game) => (
                   <Reorder.Item
                     key={game.id}
@@ -64,16 +76,21 @@ export default function SortGridModal({ isOpen, games, onClose, onSaveOrder }: S
                   >
                     <GripVertical className="text-white/30 ml-2" size={20} />
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-black/50 shrink-0">
-                      <img 
-                        src={game.coverArt} 
-                        alt="cover" 
+                      <img
+                        src={game.coverArt}
+                        alt="cover"
                         className="w-full h-full object-cover"
-                        onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=900' }}
+                        onError={(e) => {
+                          e.currentTarget.src =
+                            'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=900'
+                        }}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-white font-medium truncate">{game.title}</h3>
-                      <p className="text-white/40 text-xs mt-0.5 uppercase tracking-wider">{game.platform}</p>
+                      <p className="text-white/40 text-xs mt-0.5 uppercase tracking-wider">
+                        {game.platform}
+                      </p>
                     </div>
                   </Reorder.Item>
                 ))}
