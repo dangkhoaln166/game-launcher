@@ -1,5 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import { Game } from '../shared/types'
+import { Game, AppSettings, AudioTrack } from '../shared/types'
 
 export interface API {
   getGames: () => Promise<Game[]>
@@ -22,6 +22,10 @@ export interface API {
 
   // Metadata
   fetchMetadata: (title: string) => Promise<{ title: string; developer?: string; heroBackground?: string; coverArt?: string } | null>
+
+  // Audio
+  importAudio: (type: 'ambient' | 'sfx') => Promise<AudioTrack | null>
+  deleteAudioFile: (path: string) => Promise<boolean>
 }
 
 declare global {

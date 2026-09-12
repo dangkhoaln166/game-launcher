@@ -42,8 +42,10 @@ interface PS5LayoutProps {
   /** gameId currently being session-tracked; null if no active session */
   activeSessionGameId?: string | null
   /** Called when user manually stops a session (Steam/Epic) */
-  onStopSession?: () => void
-  uiSoundEnabled?: boolean
+  onStopSession: () => void
+  uiSoundEnabled: boolean
+  activeSfxPath?: string
+  sfxVolume?: number
 }
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
@@ -239,18 +241,6 @@ function GameCard({ game, isSelected, onSelect, onLaunch }: CardProps) {
           >
             <span
               style={{
-                fontSize: 9,
-                fontWeight: 700,
-                background: '#fff',
-                color: '#000',
-                padding: '1px 4px',
-                borderRadius: 3
-              }}
-            >
-              PS5
-            </span>
-            <span
-              style={{
                 color: '#fff',
                 fontSize: 13,
                 fontWeight: 500,
@@ -278,7 +268,9 @@ export default function PS5Layout({
   onGamesReordered,
   activeSessionGameId,
   onStopSession,
-  uiSoundEnabled
+  uiSoundEnabled,
+  activeSfxPath,
+  sfxVolume = 0.2
 }: PS5LayoutProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [time, setTime] = useState('')
@@ -288,11 +280,24 @@ export default function PS5Layout({
   const [gameToDelete, setGameToDelete] = useState<Game | null>(null)
 
   const audioCtxRef = useRef<AudioContext | null>(null)
+  const sfxAudioRef = useRef<HTMLAudioElement | null>(null)
   const isInitialSFX = useRef(true)
 
   const playHoverSound = useCallback(() => {
     if (!uiSoundEnabled) return
     try {
+      if (activeSfxPath && activeSfxPath !== 'default' && !activeSfxPath.startsWith('synth-')) {
+        const audioSrc = `file://${activeSfxPath}`
+        if (!sfxAudioRef.current || sfxAudioRef.current.src !== audioSrc) {
+          sfxAudioRef.current = new Audio(audioSrc)
+        }
+        sfxAudioRef.current.volume = sfxVolume
+        sfxAudioRef.current.currentTime = 0
+        sfxAudioRef.current.play().catch(() => {})
+        return
+      }
+
+      // Fallback to Web Audio Synth for default or built-in synth sounds
       if (!audioCtxRef.current) {
         audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
       }
@@ -304,20 +309,36 @@ export default function PS5Layout({
       osc.connect(gain)
       gain.connect(ctx.destination)
       
-      // Cheerful, soft "bop" sound
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(600, ctx.currentTime)
-      osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.04)
-      
-      gain.gain.setValueAtTime(0.2, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04)
-      
-      osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 0.04)
+      if (activeSfxPath === 'synth-click') {
+        osc.type = 'square'
+        osc.frequency.setValueAtTime(800, ctx.currentTime)
+        osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.02)
+        gain.gain.setValueAtTime(sfxVolume * 0.25, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.02)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.02)
+      } else if (activeSfxPath === 'synth-digital') {
+        osc.type = 'sawtooth'
+        osc.frequency.setValueAtTime(400, ctx.currentTime)
+        osc.frequency.setValueAtTime(600, ctx.currentTime + 0.02)
+        gain.gain.setValueAtTime(sfxVolume * 0.25, ctx.currentTime)
+        gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.05)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.05)
+      } else {
+        // Cheerful, soft "bop" sound (default)
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(600, ctx.currentTime)
+        osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.04)
+        gain.gain.setValueAtTime(sfxVolume, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.04)
+      }
     } catch (e) {
       // Ignore errors
     }
-  }, [uiSoundEnabled])
+  }, [uiSoundEnabled, activeSfxPath, sfxVolume])
 
   useEffect(() => {
     if (isInitialSFX.current) {
@@ -374,7 +395,9 @@ export default function PS5Layout({
       )
     }
 
-    if (activeTab !== 'Games' && activeTab !== 'Dashboard') {
+    if (activeTab === 'Favorites') {
+      result = result.filter((g) => g.isFavorite)
+    } else if (activeTab !== 'Games' && activeTab !== 'Dashboard') {
       result = result.filter((g) => g.collection === activeTab)
     }
 
@@ -394,7 +417,7 @@ export default function PS5Layout({
         break
     }
     return result
-  }, [games, searchQuery, sortMode])
+  }, [games, searchQuery, sortMode, activeTab])
 
   // Index wrapping for carousel
   const wrapIndex = useCallback(
@@ -634,6 +657,15 @@ export default function PS5Layout({
             >
               Tất cả
             </button>
+            <button
+              onClick={() => {
+                setActiveTab('Favorites')
+                setSelectedIndex(0)
+              }}
+              className={`text-xl transition-colors flex items-center gap-1.5 ${activeTab === 'Favorites' ? 'font-semibold text-white' : 'font-medium text-white/40 hover:text-white/65'}`}
+            >
+              Yêu thích
+            </button>
             {collections.map((col) => (
               <button
                 key={col}
@@ -774,7 +806,10 @@ export default function PS5Layout({
                   display: 'flex',
                   alignItems: 'flex-end',
                   gap: CARD_GAP,
-                  paddingLeft: 4,
+                  paddingTop: 32,
+                  paddingBottom: 48,
+                  paddingLeft: 32,
+                  paddingRight: 64,
                   overflowX: 'scroll',
                   overflowY: 'visible',
                   scrollbarWidth: 'none'

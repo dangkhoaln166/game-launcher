@@ -53,7 +53,11 @@ const api = {
   saveSettings: (settings: unknown) => ipcRenderer.invoke('save-settings', settings),
 
   // ── Metadata ───────────────────────────────────────────────────────────
-  fetchMetadata: (title: string) => ipcRenderer.invoke('fetch-metadata', title)
+  fetchMetadata: (title: string) => ipcRenderer.invoke('fetch-metadata', title),
+
+  // ── Audio ──────────────────────────────────────────────────────────────
+  importAudio: (type: unknown) => ipcRenderer.invoke('import-audio', type),
+  deleteAudioFile: (path: string) => ipcRenderer.invoke('delete-audio-file', path)
 }
 
 if (process.contextIsolated) {

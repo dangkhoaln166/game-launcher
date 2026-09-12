@@ -42,28 +42,43 @@ function App() {
     if (!settings) return
 
     if (settings.uiSoundEnabled) {
-      if (!audioRef.current) {
-        const audio = new Audio(ambientAudio)
+      // Find active ambient track
+      const tracks = settings.customAudioTracks || []
+      const activeId = settings.activeAmbientId || 'default-ambient-1'
+      const track = tracks.find(t => t.id === activeId)
+      
+      const audioSrc = track && !track.isBuiltIn ? `file://${track.path}` : ambientAudio
+
+      // Recreate audio if source changes
+      if (!audioRef.current || audioRef.current.src !== audioSrc) {
+        if (audioRef.current) {
+          audioRef.current.pause()
+        }
+        
+        const audio = new Audio(audioSrc)
         audio.loop = true
-        audio.volume = 0.2
+        audio.volume = settings.ambientVolume ?? 0.2
         audioRef.current = audio
       }
-      
-      // Need user interaction to play audio in modern browsers, but in Electron it might just work if autoplay policy is relaxed
-      // We will try to play it
-      audioRef.current.play().catch((e) => console.log('Auto-play prevented:', e))
+
+      // Resume playing
+      audioRef.current.play().catch((e) => {
+        console.log('Auto-play prevented:', e)
+      })
     } else {
       if (audioRef.current) {
         audioRef.current.pause()
+        audioRef.current.currentTime = 0
       }
     }
-    
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-      }
+  }, [settings?.uiSoundEnabled, settings?.activeAmbientId, settings?.customAudioTracks])
+
+  // Update volume separately to avoid restarting playback
+  useEffect(() => {
+    if (audioRef.current && settings?.ambientVolume !== undefined) {
+      audioRef.current.volume = settings.ambientVolume
     }
-  }, [settings?.uiSoundEnabled])
+  }, [settings?.ambientVolume])
 
   // ── Subscribe to playtime-updated from main process ──────────────────────
   useEffect(() => {
@@ -127,13 +142,26 @@ function App() {
         activeSessionGameId={activeSessionGameId}
         onStopSession={handleStopSession}
         uiSoundEnabled={settings?.uiSoundEnabled ?? true}
+        activeSfxPath={
+          settings?.activeSfxId === 'default-sfx-2' ? 'synth-click' :
+          settings?.activeSfxId === 'default-sfx-3' ? 'synth-digital' :
+          settings?.customAudioTracks?.find(t => t.id === settings?.activeSfxId)?.path || 'default'
+        }
+        sfxVolume={settings?.sfxVolume ?? 0.2}
       />
 
       {settings && (
         <SettingsModal
           isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
           settings={settings}
+          onClose={() => {
+            // Restore settings from main process in case of cancel
+            window.api.getSettings().then(setSettings)
+            setIsSettingsOpen(false)
+          }}
+          onChange={(preview) => {
+            setSettings(preview)
+          }}
           onSave={handleSaveSettings}
         />
       )}

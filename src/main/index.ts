@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { exec } from 'child_process'
 import * as crypto from 'crypto'
-import { join, basename, extname } from 'path'
+import { join, basename, extname, resolve } from 'path'
 import * as fs from 'fs-extra'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -14,7 +14,12 @@ const gameStore = new Map<string, Game>()
 let currentSettings: AppSettings = {
   fullscreen: true,
   autoStart: false,
-  uiSoundEnabled: true
+  uiSoundEnabled: true,
+  activeAmbientId: 'default-ambient-1',
+  activeSfxId: 'default-sfx-1',
+  customAudioTracks: [],
+  ambientVolume: 0.2,
+  sfxVolume: 0.2
 }
 
 // ── Session Manager ────────────────────────────────────────────────────────────
@@ -357,6 +362,55 @@ app.whenReady().then(() => {
   // ── IPC: open-game-folder ───────────────────────────────────────────────
   ipcMain.handle('open-game-folder', async (_, exePath: string) => {
     shell.showItemInFolder(exePath)
+  })
+
+  // ── IPC: import-audio ──────────────────────────────────────────────────
+  ipcMain.handle('import-audio', async (_, type: 'ambient' | 'sfx') => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'Audio Files', extensions: ['mp3', 'wav', 'ogg'] }]
+    })
+    if (canceled || filePaths.length === 0) return null
+
+    const srcPath = filePaths[0]
+    const audioDir = join(app.getPath('userData'), 'audio')
+    await fs.ensureDir(audioDir)
+
+    const id = crypto.randomUUID()
+    const ext = extname(srcPath)
+    const destPath = join(audioDir, `${id}${ext}`)
+    
+    await fs.copy(srcPath, destPath)
+    
+    return {
+      id,
+      name: basename(srcPath, ext),
+      path: destPath,
+      type,
+      isBuiltIn: false
+    }
+  })
+
+  // ── IPC: delete-audio-file ─────────────────────────────────────────────
+  ipcMain.handle('delete-audio-file', async (_, filePath: string) => {
+    try {
+      const audioDir = join(app.getPath('userData'), 'audio')
+      const resolvedPath = resolve(filePath)
+      
+      // Security check: Only allow deleting files inside the app's audio directory
+      if (!resolvedPath.startsWith(audioDir)) {
+        console.warn('Unauthorized file deletion attempt:', filePath)
+        return false
+      }
+
+      if (fs.existsSync(resolvedPath)) {
+        await fs.remove(resolvedPath)
+      }
+      return true
+    } catch (e) {
+      console.error('Failed to delete audio file', e)
+      return false
+    }
   })
 
   // ── IPC: Settings ───────────────────────────────────────────────────────

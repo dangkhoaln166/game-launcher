@@ -20,8 +20,23 @@ export interface Game {
   collection?: string // Category/Genre folder for the game
 }
 
+export interface AudioTrack {
+  id: string
+  name: string
+  path: string // built-in identifier or local file path
+  type: 'ambient' | 'sfx'
+  isBuiltIn?: boolean
+}
+
 export interface AppSettings {
   fullscreen: boolean
   autoStart: boolean
   uiSoundEnabled: boolean
+
+  // Audio settings
+  activeAmbientId?: string
+  activeSfxId?: string
+  customAudioTracks?: AudioTrack[]
+  ambientVolume?: number
+  sfxVolume?: number
 }
