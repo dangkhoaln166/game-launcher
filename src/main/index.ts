@@ -1,5 +1,4 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
-import { exec } from 'child_process'
 import * as crypto from 'crypto'
 import { join, basename, extname, resolve } from 'path'
 import * as fs from 'fs-extra'
