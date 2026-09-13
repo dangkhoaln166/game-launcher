@@ -57,7 +57,12 @@ const api = {
 
   // ── Audio ──────────────────────────────────────────────────────────────
   importAudio: (type: unknown) => ipcRenderer.invoke('import-audio', type),
-  deleteAudioFile: (path: string) => ipcRenderer.invoke('delete-audio-file', path)
+  deleteAudioFile: (path: string) => ipcRenderer.invoke('delete-audio-file', path),
+
+  // ── Window Controls ────────────────────────────────────────────────────
+  minimizeWindow: () => ipcRenderer.send('window-minimize'),
+  maximizeWindow: () => ipcRenderer.send('window-maximize'),
+  closeWindow: () => ipcRenderer.send('window-close')
 }
 
 if (process.contextIsolated) {

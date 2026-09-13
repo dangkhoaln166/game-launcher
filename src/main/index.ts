@@ -129,6 +129,7 @@ function createWindow(): void {
     show: false,
     fullscreen: currentSettings.fullscreen,
     autoHideMenuBar: true,
+    frame: false,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -169,6 +170,27 @@ app.whenReady().then(() => {
   app.setLoginItemSettings({
     openAtLogin: currentSettings.autoStart,
     path: process.execPath
+  })
+
+  // ── IPC: Window Controls ───────────────────────────────────────────────
+  ipcMain.on('window-minimize', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize()
+  })
+  ipcMain.on('window-maximize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win) {
+      if (win.isFullScreen()) {
+        win.setFullScreen(false)
+        win.unmaximize()
+      } else if (win.isMaximized()) {
+        win.unmaximize()
+      } else {
+        win.maximize()
+      }
+    }
+  })
+  ipcMain.on('window-close', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close()
   })
 
   // ── IPC: get-games ─────────────────────────────────────────────────────

@@ -24,8 +24,13 @@ export interface API {
   fetchMetadata: (title: string) => Promise<{ title: string; developer?: string; heroBackground?: string; coverArt?: string } | null>
 
   // Audio
-  importAudio: (type: 'ambient' | 'sfx') => Promise<AudioTrack | null>
+  importAudio: (type: 'ambient' | 'sfx') => Promise<{ name: string; path: string } | null>
   deleteAudioFile: (path: string) => Promise<boolean>
+
+  // Window controls
+  minimizeWindow: () => void
+  maximizeWindow: () => void
+  closeWindow: () => void
 }
 
 declare global {

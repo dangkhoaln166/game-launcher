@@ -19,7 +19,10 @@ import {
   FileText,
   Mail,
   Square,
-  Clock
+  Clock,
+  Globe,
+  Minus,
+  Maximize
 } from 'lucide-react'
 import AddGameModal from './AddGameModal'
 import EditGameModal from './EditGameModal'
@@ -253,6 +256,55 @@ function GameCard({ game, isSelected, onSelect, onLaunch }: CardProps) {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+// ─── Activity Card ────────────────────────────────────────────────────────────
+interface ActivityCardProps {
+  title: string
+  subtitle?: string
+  icon: React.ReactNode
+  bgImage?: string
+  color?: string
+  onClick: () => void
+  delay?: number
+}
+
+function ActivityCard({ title, subtitle, icon, bgImage, color = 'bg-white/10', onClick, delay = 0 }: ActivityCardProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3, delay, ease: 'easeOut' }}
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onClick}
+      className={`relative w-56 h-32 md:w-72 md:h-44 rounded-[16px] md:rounded-[20px] overflow-hidden cursor-pointer group flex flex-col justify-end p-4 md:p-5 border border-white/10 shadow-xl shrink-0 ${bgImage ? 'bg-black/40' : color}`}
+      style={{ backdropFilter: 'blur(16px)' }}
+    >
+      {bgImage && (
+        <>
+          <img src={bgImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-75 transition-opacity duration-500" alt="" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+        </>
+      )}
+      {!bgImage && (
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      )}
+      <div className="relative z-10 flex flex-col gap-1 md:gap-2">
+        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white mb-1 shadow-sm">
+          {icon}
+        </div>
+        <h3 className="text-white font-bold text-lg md:text-xl leading-tight drop-shadow-md">{title}</h3>
+        {subtitle && <p className="text-white/70 text-[10px] md:text-sm font-semibold uppercase tracking-widest drop-shadow-sm">{subtitle}</p>}
+      </div>
+      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+         <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white/80 backdrop-blur-sm">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+         </div>
+      </div>
+    </motion.div>
   )
 }
 
@@ -627,14 +679,14 @@ export default function PS5Layout({
       </div>
 
       {/* ── Layer 1: UI chrome (pointer events active) ────────────────── */}
+      <div className="absolute top-0 inset-x-0 h-6" style={{ WebkitAppRegion: 'drag', zIndex: 50 } as any} />
       <div
-        className="absolute inset-0 flex flex-col"
-        style={{ zIndex: 10, pointerEvents: 'auto', padding: '36px 60px 44px' }}
+        className="absolute inset-0 flex flex-col z-10 pointer-events-auto p-4 md:p-8 lg:px-14 lg:py-10 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}
       >
         {/* ── Top bar ─────────────────────────────────────────────────── */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center w-full gap-4 mb-4 shrink-0">
           {/* Left nav */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3 md:gap-5 overflow-x-auto shrink pb-2 md:pb-0" style={{ scrollbarWidth: 'none' }}>
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-white font-bold text-lg leading-none hover:bg-white/25 transition-colors"
@@ -681,7 +733,7 @@ export default function PS5Layout({
           </div>
 
           {/* Right: icons + clock */}
-          <div className="flex items-center gap-6 z-10">
+          <div className="flex items-center gap-3 md:gap-6 z-10 shrink-0">
             {/* Search */}
             <div className="relative flex items-center">
               <AnimatePresence>
@@ -788,6 +840,18 @@ export default function PS5Layout({
               <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-400 border-2 border-black" />
             </div>
             <span className="text-xl font-light tabular-nums">{time}</span>
+            {/* Window Controls */}
+            <div className="flex items-center gap-1.5 ml-2 border-l border-white/20 pl-4" style={{ WebkitAppRegion: 'no-drag' } as any}>
+              <button onClick={() => window.api.minimizeWindow()} className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-colors" title="Thu nhỏ">
+                <Minus size={18} />
+              </button>
+              <button onClick={() => window.api.maximizeWindow()} className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-colors" title="Phóng to / Thu nhỏ">
+                <Maximize size={16} />
+              </button>
+              <button onClick={() => window.api.closeWindow()} className="p-1.5 text-white/60 hover:text-white hover:bg-red-500/80 rounded-full transition-colors" title="Đóng">
+                <XIcon size={18} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -799,7 +863,7 @@ export default function PS5Layout({
         ) : (
           <>
             {/* ── Carousel ────────────────────────────────────────────────── */}
-            <div style={{ width: '100%', overflowX: 'hidden', overflowY: 'visible' }}>
+            <div className="shrink-0" style={{ width: '100%', overflowX: 'hidden', overflowY: 'visible' }}>
               <div
                 ref={trackRef}
                 style={{
@@ -807,7 +871,7 @@ export default function PS5Layout({
                   alignItems: 'flex-end',
                   gap: CARD_GAP,
                   paddingTop: 32,
-                  paddingBottom: 48,
+                  paddingBottom: 24,
                   paddingLeft: 32,
                   paddingRight: 64,
                   overflowX: 'scroll',
@@ -832,25 +896,79 @@ export default function PS5Layout({
         {/* ── Push bottom content to screen bottom ─────────────────────── */}
         {activeTab !== 'Dashboard' && <div style={{ flex: 1 }} />}
 
-        {/* ── Bottom info (animates per game change) ───────────────────── */}
+        {/* ── Main Content (Cards + Bottom info) animates per game ─────── */}
         {activeTab !== 'Dashboard' && (
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedGame.id}
-            className="flex justify-between items-end"
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          >
-            {/* Left: title + CTA */}
-            <div className="flex flex-col gap-3 max-w-lg">
-              <div className="self-start px-2 py-0.5 rounded bg-white/10 border border-white/12 backdrop-blur-sm text-[10px] font-semibold uppercase tracking-widest text-white/75">
-                {selectedGame.developer ?? 'Game'}
+              className="flex flex-col gap-6 md:gap-8 w-full shrink-0"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            >
+              {/* Activity Cards Row */}
+              <div className="flex gap-3 md:gap-5 overflow-x-auto pb-4 w-full" style={{ scrollbarWidth: 'none' }}>
+                <ActivityCard 
+                  title={activeSessionGameId === selectedGame.id ? "Đang chơi" : "Tiếp tục chơi"}
+                  subtitle={selectedGame.playTime ? `${Math.floor(selectedGame.playTime / 60)}h ${selectedGame.playTime % 60}m đã chơi` : "Bắt đầu hành trình"}
+                  icon={<Play size={18} fill="currentColor" />}
+                  bgImage={selectedGame.heroBackground || selectedGame.coverArt}
+                  onClick={() => onPlay(selectedGame)}
+                  delay={0.1}
+                />
+                
+                <ActivityCard 
+                  title="Thống kê cá nhân"
+                  subtitle={selectedGame.playCount ? `Mở game ${selectedGame.playCount} lần` : "Chưa từng mở"}
+                  icon={<Activity size={18} />}
+                  color="bg-purple-900/40"
+                  onClick={() => setActiveTab('Dashboard')}
+                  delay={0.15}
+                />
+
+                <ActivityCard 
+                  title={selectedGame.developer ? `NSX: ${selectedGame.developer}` : "Thông tin phát hành"}
+                  subtitle={`Nền tảng: ${selectedGame.platform.toUpperCase()}`}
+                  icon={<Globe size={18} />}
+                  color="bg-blue-900/40"
+                  onClick={() => setIsEditModalOpen(true)}
+                  delay={0.2}
+                />
+
+                {selectedGame.notes && (
+                  <ActivityCard 
+                    title="Ghi chú & Cẩm nang"
+                    subtitle="Xem nhanh"
+                    icon={<FileText size={18} />}
+                    color="bg-amber-900/40"
+                    onClick={() => setIsNoteOpen(true)}
+                    delay={0.25}
+                  />
+                )}
+
+                {selectedGame.exePath && (
+                  <ActivityCard 
+                    title="Mở thư mục gốc"
+                    subtitle="Local Files"
+                    icon={<FolderOpen size={18} />}
+                    color="bg-white/10"
+                    onClick={() => window.api.openGameFolder(selectedGame.exePath!)}
+                    delay={0.3}
+                  />
+                )}
               </div>
 
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-light leading-snug tracking-tight text-white drop-shadow-lg">
+              {/* Bottom Info Row */}
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end w-full gap-4">
+                {/* Left: title + CTA */}
+            <div className="flex flex-col gap-3 md:gap-4 w-full">
+              <div className="self-start px-2 py-0.5 md:px-3 md:py-1 rounded-md bg-white/10 border border-white/12 backdrop-blur-sm text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] text-white/80">
+                {selectedGame.developer ?? 'Trò chơi'}
+              </div>
+
+              <div className="flex items-center gap-3 md:gap-4">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight text-white drop-shadow-2xl">
                   {selectedGame.title}
                 </h1>
                 {/* Inline favorite badge next to title */}
@@ -1058,8 +1176,9 @@ export default function PS5Layout({
                 </span>
               </div>
             )}
-          </motion.div>
-        </AnimatePresence>
+              </div>
+            </motion.div>
+          </AnimatePresence>
         )}
       </div>
 
