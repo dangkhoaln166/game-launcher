@@ -110,15 +110,15 @@ export default function SettingsModal({ isOpen, onClose, settings, onChange, onS
           transition={{ duration: 0.2 }}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xl" onClick={onClose} />
 
           <motion.div
-            className="relative rounded-3xl border border-white/10 flex flex-col p-8"
+            className="relative rounded-[32px] border border-white/10 flex flex-col p-8 backdrop-blur-2xl"
             style={{
               width: 580,
               maxHeight: '90vh',
-              background: 'rgba(20,20,25,0.95)',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.8)'
+              background: 'linear-gradient(145deg, rgba(65,70,80,0.95) 0%, rgba(40,45,55,0.98) 100%)',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.1)'
             }}
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -126,11 +126,11 @@ export default function SettingsModal({ isOpen, onClose, settings, onChange, onS
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           >
             <div className="flex items-center gap-4 mb-8 shrink-0">
-              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center border border-white/20 shadow-lg shadow-white/5">
                 <SettingsIcon size={24} className="text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white">Cài đặt</h2>
+                <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">Cài đặt</h2>
                 <p className="text-sm text-white/50">Tùy chỉnh hệ thống & Âm thanh</p>
               </div>
             </div>
@@ -140,48 +140,48 @@ export default function SettingsModal({ isOpen, onClose, settings, onChange, onS
               {/* Toggles */}
               <div className="flex flex-col gap-4">
                 <div
-                  className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                  className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white-10 hover:bg-white/20 hover:border-white/30 transition-all duration-300 cursor-pointer group"
                   onClick={() => handleToggle('fullscreen')}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/70">
+                    <div className="w-10 h-10 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors flex items-center justify-center text-white/70 group-hover:text-white shadow-inner">
                       <Monitor size={18} />
                     </div>
                     <div>
-                      <h3 className="text-white font-medium">Toàn màn hình</h3>
-                      <p className="text-xs text-white/50">Mở ứng dụng ở chế độ toàn màn hình</p>
+                      <h3 className="text-white font-medium group-hover:text-blue-100 transition-colors">Toàn màn hình</h3>
+                      <p className="text-xs text-white/50 group-hover:text-white/70 transition-colors">Mở ứng dụng ở chế độ toàn màn hình</p>
                     </div>
                   </div>
                   <ToggleSwitch active={localSettings.fullscreen} />
                 </div>
 
                 <div
-                  className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                  className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white-10 hover:bg-white/20 hover:border-white/30 transition-all duration-300 cursor-pointer group"
                   onClick={() => handleToggle('autoStart')}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/70">
+                    <div className="w-10 h-10 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors flex items-center justify-center text-white/70 group-hover:text-white shadow-inner">
                       <Power size={18} />
                     </div>
                     <div>
-                      <h3 className="text-white font-medium">Khởi động cùng Windows</h3>
-                      <p className="text-xs text-white/50">Tự động mở launcher khi mở máy</p>
+                      <h3 className="text-white font-medium group-hover:text-blue-100 transition-colors">Khởi động cùng Windows</h3>
+                      <p className="text-xs text-white/50 group-hover:text-white/70 transition-colors">Tự động mở launcher khi mở máy</p>
                     </div>
                   </div>
                   <ToggleSwitch active={localSettings.autoStart} />
                 </div>
 
                 <div
-                  className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                  className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white-10 hover:bg-white/20 hover:border-white/30 transition-all duration-300 cursor-pointer group"
                   onClick={() => handleToggle('uiSoundEnabled')}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/70">
+                    <div className="w-10 h-10 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors flex items-center justify-center text-white/70 group-hover:text-white shadow-inner">
                       <Volume2 size={18} />
                     </div>
                     <div>
-                      <h3 className="text-white font-medium">Phát âm thanh</h3>
-                      <p className="text-xs text-white/50">Bật/tắt toàn bộ âm thanh giao diện</p>
+                      <h3 className="text-white font-medium group-hover:text-blue-100 transition-colors">Phát âm thanh</h3>
+                      <p className="text-xs text-white/50 group-hover:text-white/70 transition-colors">Bật/tắt toàn bộ âm thanh giao diện</p>
                     </div>
                   </div>
                   <ToggleSwitch active={localSettings.uiSoundEnabled} />
@@ -223,13 +223,13 @@ export default function SettingsModal({ isOpen, onClose, settings, onChange, onS
                         <div
                           key={track.id}
                           onClick={() => setLocalSettings(p => ({ ...p, activeAmbientId: track.id }))}
-                          className={`flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer ${
+                          className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-300 cursor-pointer ${
                             localSettings.activeAmbientId === track.id
-                              ? 'bg-blue-500/20 border-blue-500/50'
-                              : 'bg-white/5 border-white/5 hover:bg-white/10'
+                              ? 'bg-gradient-to-r from-blue-500/30 to-blue-400/20 border-blue-400/60 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
+                              : 'bg-white/10 border-white/10 hover:bg-white/20 hover:border-white/30'
                           }`}
                         >
-                          <span className="text-sm text-white/90 truncate">{track.name}</span>
+                          <span className={`text-sm truncate font-medium ${localSettings.activeAmbientId === track.id ? 'text-blue-100' : 'text-white/80'}`}>{track.name}</span>
                           {!track.isBuiltIn && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteAudio(track) }}
@@ -274,13 +274,13 @@ export default function SettingsModal({ isOpen, onClose, settings, onChange, onS
                         <div
                           key={track.id}
                           onClick={() => setLocalSettings(p => ({ ...p, activeSfxId: track.id }))}
-                          className={`flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer ${
+                          className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-300 cursor-pointer ${
                             localSettings.activeSfxId === track.id
-                              ? 'bg-blue-500/20 border-blue-500/50'
-                              : 'bg-white/5 border-white/5 hover:bg-white/10'
+                              ? 'bg-gradient-to-r from-purple-500/30 to-purple-400/20 border-purple-400/60 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                              : 'bg-white/10 border-white/10 hover:bg-white/20 hover:border-white/30'
                           }`}
                         >
-                          <span className="text-sm text-white/90 truncate">{track.name}</span>
+                          <span className={`text-sm truncate font-medium ${localSettings.activeSfxId === track.id ? 'text-purple-100' : 'text-white/80'}`}>{track.name}</span>
                           {!track.isBuiltIn && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteAudio(track) }}
@@ -297,16 +297,16 @@ export default function SettingsModal({ isOpen, onClose, settings, onChange, onS
               )}
             </div>
 
-            <div className="flex gap-3 w-full shrink-0">
+            <div className="flex gap-3 w-full shrink-0 mt-2">
               <button
                 onClick={onClose}
-                className="flex-1 py-3.5 rounded-2xl bg-white/8 hover:bg-white/15 text-white/80 hover:text-white text-sm font-semibold transition-all border border-white/5"
+                className="flex-1 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white/90 hover:text-white text-sm font-semibold transition-all border border-white/10"
               >
                 Hủy bỏ
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 py-3.5 rounded-2xl bg-white text-black hover:bg-white/90 text-sm font-semibold transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)]"
+                className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-white to-gray-200 text-black hover:from-white hover:to-white text-sm font-bold transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]"
               >
                 Lưu thay đổi
               </button>
@@ -321,8 +321,8 @@ export default function SettingsModal({ isOpen, onClose, settings, onChange, onS
 function ToggleSwitch({ active }: { active: boolean }) {
   return (
     <div
-      className={`w-12 h-7 rounded-full flex items-center px-1 transition-colors ${
-        active ? 'bg-green-500' : 'bg-white/20'
+      className={`w-12 h-7 rounded-full flex items-center px-1 transition-all duration-300 ${
+        active ? 'bg-gradient-to-r from-green-400 to-emerald-500 shadow-[0_0_10px_rgba(52,211,153,0.4)]' : 'bg-white/20'
       }`}
     >
       <motion.div

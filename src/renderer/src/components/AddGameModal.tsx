@@ -144,14 +144,14 @@ export default function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameMo
           transition={{ duration: 0.2 }}
           onClick={handleClose}
         >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xl" />
 
           <motion.div
-            className="relative rounded-3xl border border-white/10 overflow-hidden"
+            className="relative rounded-[32px] border border-white/10 overflow-hidden backdrop-blur-2xl"
             style={{
               width: 520,
-              background: 'rgba(18,18,24,0.97)',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.85)'
+              background: 'linear-gradient(145deg, rgba(65,70,80,0.95) 0%, rgba(40,45,55,0.98) 100%)',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.1)'
             }}
             initial={{ opacity: 0, scale: 0.92, y: 24 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -160,8 +160,8 @@ export default function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameMo
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-8 pt-7 pb-5 border-b border-white/8">
-              <h2 className="text-xl font-semibold text-white tracking-tight">
+            <div className="flex items-center justify-between px-8 pt-7 pb-5 border-b border-white/[0.08] bg-white/[0.02]">
+              <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 tracking-tight">
                 {pending ? 'Chỉnh sửa thông tin Game' : 'Thêm Game'}
               </h2>
               <button
@@ -272,16 +272,16 @@ export default function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameMo
                   </div>
 
                   {/* Action buttons */}
-                  <div className="flex gap-3 mt-1">
+                  <div className="flex gap-3 mt-3">
                     <button
                       onClick={() => setPending(null)}
-                      className="flex-1 py-2.5 rounded-xl bg-white/6 hover:bg-white/12 text-white/60 hover:text-white text-sm font-medium border border-white/8 transition-all"
+                      className="flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white/90 hover:text-white text-sm font-semibold border border-white/10 transition-all"
                     >
                       ← Quay lại
                     </button>
                     <button
                       onClick={handleConfirmSave}
-                      className="flex-1 py-2.5 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/85 transition-all"
+                      className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-white to-gray-200 text-black text-sm font-bold hover:from-white hover:to-white transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]"
                     >
                       Thêm Game
                     </button>
@@ -327,10 +327,10 @@ export default function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameMo
 
             {/* Footer — only on options view */}
             {!pending && (
-              <div className="px-8 pb-7 pt-1">
+              <div className="px-8 pb-7 pt-2">
                 <button
                   onClick={handleClose}
-                  className="w-full py-2.5 rounded-xl bg-white/6 hover:bg-white/12 text-white/60 hover:text-white text-sm font-medium border border-white/8 transition-all"
+                  className="w-full py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white/90 hover:text-white text-sm font-semibold border border-white/10 transition-all"
                 >
                   Đóng
                 </button>
@@ -362,22 +362,26 @@ function OptionCard({ icon, title, desc, color, state, onClick }: OptionCardProp
     <motion.button
       onClick={onClick}
       disabled={isScanning}
-      whileHover={isScanning ? {} : { scale: 1.015 }}
+      whileHover={isScanning ? {} : { scale: 1.015, y: -2 }}
       whileTap={isScanning ? {} : { scale: 0.985 }}
-      className="w-full text-left rounded-2xl border p-4 transition-all focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+      className="w-full text-left rounded-2xl border p-4 transition-all duration-300 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed group relative overflow-hidden"
       style={{
         background: isSuccess
-          ? 'rgba(34,197,94,0.08)'
+          ? 'rgba(34,197,94,0.15)'
           : isError
-            ? 'rgba(239,68,68,0.08)'
-            : 'rgba(255,255,255,0.04)',
+            ? 'rgba(239,68,68,0.15)'
+            : 'rgba(255,255,255,0.1)',
         borderColor: isSuccess
-          ? 'rgba(34,197,94,0.3)'
+          ? 'rgba(34,197,94,0.4)'
           : isError
-            ? 'rgba(239,68,68,0.3)'
+            ? 'rgba(239,68,68,0.4)'
             : 'rgba(255,255,255,0.08)'
       }}
     >
+      <div 
+        className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none" 
+        style={{ background: `linear-gradient(120deg, transparent, ${color}, transparent)` }} 
+      />
       <div className="flex items-center gap-4">
         <div
           className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
